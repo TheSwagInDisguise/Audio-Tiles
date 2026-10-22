@@ -35,12 +35,39 @@ object MdrConstants {
     const val OP_ASC_NOTIFY: Byte = 0x69.toByte()  // Unsolicited state notify (e.g. physical NC button pressed)
 
     // --- Battery Telemetry OpCodes ---
-    const val OP_BATTERY_GET: Byte = 0x22.toByte()     // Query battery state: [0x22, 0x00]
-    const val OP_BATTERY_RET: Byte = 0x23.toByte()     // Battery response: [0x23, 0x00, level, charging]
-    const val OP_BATTERY_NOTIFY: Byte = 0x24.toByte()  // Unsolicited battery update: [0x24, 0x00, level, charging]
+    const val OP_BATTERY_GET: Byte = 0x22.toByte()     // Query battery state on V2: [0x22, 0x00] (NOTE: Never send to V1!)
+    const val OP_BATTERY_RET: Byte = 0x23.toByte()     // Battery response: [0x23, 0x00, level, charging] or TWS [0x23, 0x01, L, L_c, R, R_c, C, C_c]
+    const val OP_BATTERY_NOTIFY: Byte = 0x24.toByte()  // Unsolicited battery update
+
+    // --- Equalizer & Clear Bass OpCodes (5-band EQ + Clear Bass) ---
+    const val OP_EQ_GET: Byte = 0x56.toByte()          // Query EQ params: [0x56, 0x00]
+    const val OP_EQ_RET: Byte = 0x57.toByte()          // EQ response
+    const val OP_EQ_SET: Byte = 0x58.toByte()          // Set EQ preset or custom bands
+    const val OP_EQ_NOTIFY: Byte = 0x59.toByte()       // Unsolicited EQ update
+
+    // --- Speak-to-Chat OpCodes (Smart Talking Mode) ---
+    const val OP_STC_GET: Byte = 0xF6.toByte()         // Query Speak-to-Chat status
+    const val OP_STC_RET: Byte = 0xF7.toByte()         // Speak-to-Chat response
+    const val OP_STC_SET: Byte = 0xF8.toByte()         // Set Speak-to-Chat params
+    const val OP_STC_NOTIFY: Byte = 0xF9.toByte()      // Unsolicited Speak-to-Chat update
+
+    // --- DSEE Extreme / Upscaling OpCodes ---
+    const val OP_DSEE_GET: Byte = 0xE6.toByte()        // Query DSEE status: [0xE6, 0x01]
+    const val OP_DSEE_RET: Byte = 0xE7.toByte()        // DSEE response
+    const val OP_DSEE_SET: Byte = 0xE8.toByte()        // Set DSEE: [0xE8, 0x01, 0x01 auto / 0x00 off]
+    const val OP_DSEE_NOTIFY: Byte = 0xE9.toByte()     // Unsolicited DSEE update
+
+    // --- System / Hardware Sensors OpCodes ---
+    const val OP_SYSTEM_GET: Byte = 0xD6.toByte()      // Query system features (Wearing detection, auto power off)
+    const val OP_SYSTEM_RET: Byte = 0xD7.toByte()
+    const val OP_SYSTEM_SET: Byte = 0xD8.toByte()      // Set wearing pause (0x01) or auto-off (0x02)
+    const val OP_SYSTEM_NOTIFY: Byte = 0xD9.toByte()
+
+    const val OP_TOUCH_SENSOR_SET: Byte = 0xC8.toByte() // Touch control panel toggle: [0xC8, 0x01, on/off]
 
     // --- Noise Control Subtypes ---
-    const val SUBTYPE_NC_ASM_V2: Byte = 0x17.toByte()  // MDR v2 standard for WH-1000XM5 / WH-1000XM6 (8-byte payload with wind byte)
+    const val SUBTYPE_NC_ASM_V2: Byte = 0x17.toByte()  // MDR v2 standard (WH-1000XM6, XM5, WF-1000XM5, LinkBuds, ULT WEAR)
+    const val SUBTYPE_NC_ASM_V1: Byte = 0x07.toByte()  // MDR v1 legacy (WH-1000XM4, WH-1000XM3, WF-1000XM3)
     const val SUBTYPE_NC_ASM_ALT: Byte = 0x15.toByte() // Alternate subtype used on select firmware versions (7-byte payload)
 
     // --- ASC Field Values ---

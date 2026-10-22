@@ -83,7 +83,8 @@ class XM6TileService : TileService() {
         tile.state = Tile.STATE_INACTIVE
         tile.label = "Switching..."
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            tile.subtitle = "Connecting to XM6..."
+            val devName = repository.targetDevice.value?.name ?: "Sony"
+            tile.subtitle = "Connecting to $devName..."
         }
         tile.updateTile()
 
@@ -96,7 +97,8 @@ class XM6TileService : TileService() {
                         repository.connect()
                     }
                     if (connectResult.isFailure) {
-                        showErrorFeedback("XM6 Not Found (Check Bluetooth & Power)")
+                        val devName = repository.targetDevice.value?.name ?: "Sony Device"
+                        showErrorFeedback("$devName Not Found (Check Bluetooth & Power)")
                         updateTileUi(ConnectionState.Error("Device not found"), repository.noiseControlState.value.mode)
                         return@launch
                     }
@@ -112,11 +114,12 @@ class XM6TileService : TileService() {
                     updateTileUi(repository.connectionState.value, newMode)
                 } else {
                     val err = cycleResult.exceptionOrNull()?.message ?: "Communication failed"
-                    showErrorFeedback("XM6 Error: $err")
+                    showErrorFeedback("Error: $err")
                     updateTileUi(ConnectionState.Error(err), repository.noiseControlState.value.mode)
                 }
             } catch (e: Exception) {
-                showErrorFeedback("XM6 Not Found (Check Bluetooth & Power)")
+                val devName = repository.targetDevice.value?.name ?: "Sony Device"
+                showErrorFeedback("$devName Not Found (Check Bluetooth & Power)")
                 updateTileUi(ConnectionState.Error(e.message ?: "Failed"), repository.noiseControlState.value.mode)
             } finally {
                 try {
@@ -168,13 +171,15 @@ class XM6TileService : TileService() {
                 tile.state = Tile.STATE_INACTIVE
                 tile.label = "Connecting..."
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    tile.subtitle = "WH-1000XM6"
+                    val devName = repository.targetDevice.value?.name ?: "Sony"
+                    tile.subtitle = devName
                 }
                 tile.icon = Icon.createWithResource(this, R.drawable.ic_headphones)
             }
             is ConnectionState.Error -> {
                 tile.state = Tile.STATE_INACTIVE
-                tile.label = "XM6 Not Found"
+                val devName = repository.targetDevice.value?.name ?: "Sony Device"
+                tile.label = "$devName Not Found"
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     tile.subtitle = "Tap to retry"
                 }
@@ -182,7 +187,8 @@ class XM6TileService : TileService() {
             }
             is ConnectionState.Disconnected -> {
                 tile.state = Tile.STATE_INACTIVE
-                tile.label = "XM6 Disconnected"
+                val devName = repository.targetDevice.value?.name ?: "Sony Device"
+                tile.label = "$devName Disconnected"
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     tile.subtitle = "Tap to connect"
                 }

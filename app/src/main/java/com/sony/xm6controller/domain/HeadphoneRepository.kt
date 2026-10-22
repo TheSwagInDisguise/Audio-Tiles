@@ -8,7 +8,7 @@ import com.sony.xm6controller.data.bluetooth.DeviceScanner
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * Clean Architecture Repository providing unified domain access to Sony WH-1000XM6.
+ * Clean Architecture Repository providing unified domain access to Sony Headphones and Earbuds.
  */
 class HeadphoneRepository(private val context: Context) {
 
@@ -18,6 +18,8 @@ class HeadphoneRepository(private val context: Context) {
     val connectionState: StateFlow<ConnectionState> = connectionManager.connectionState
     val noiseControlState: StateFlow<NoiseControlState> = connectionManager.noiseControlState
     val batteryState: StateFlow<BatteryState> = connectionManager.batteryState
+    val equalizerState: StateFlow<EqualizerState> = connectionManager.equalizerState
+    val soundFeaturesState: StateFlow<SoundFeaturesState> = connectionManager.soundFeaturesState
     val tileCycleScheme: StateFlow<TileCycleScheme> = connectionManager.tileCycleScheme
     val targetDevice: StateFlow<BluetoothDevice?> = connectionManager.targetDevice
     val diagnosticLogs: StateFlow<List<String>> = connectionManager.diagnosticLogs
@@ -58,6 +60,44 @@ class HeadphoneRepository(private val context: Context) {
 
     suspend fun queryBattery(): Result<Unit> {
         return connectionManager.queryBattery()
+    }
+
+    // --- Sound Connect Features ---
+
+    suspend fun setEqualizerPreset(preset: EqPreset): Result<Unit> {
+        return connectionManager.setEqualizerPreset(preset)
+    }
+
+    suspend fun setEqualizerBands(preset: EqPreset, clearBass: Int, bands: List<Int>): Result<Unit> {
+        return connectionManager.setEqualizerBands(preset, clearBass, bands)
+    }
+
+    suspend fun queryEqualizer(): Result<Unit> {
+        return connectionManager.queryEqualizer()
+    }
+
+    suspend fun setSpeakToChat(enabled: Boolean, sensitivity: Int = 1, timeout: Int = 1): Result<Unit> {
+        return connectionManager.setSpeakToChat(enabled, sensitivity, timeout)
+    }
+
+    suspend fun setDsee(enabled: Boolean): Result<Unit> {
+        return connectionManager.setDsee(enabled)
+    }
+
+    suspend fun setWearingPause(enabled: Boolean): Result<Unit> {
+        return connectionManager.setWearingPause(enabled)
+    }
+
+    suspend fun setAutoPowerOff(timerIndex: Int): Result<Unit> {
+        return connectionManager.setAutoPowerOff(timerIndex)
+    }
+
+    suspend fun setTouchSensor(enabled: Boolean): Result<Unit> {
+        return connectionManager.setTouchSensor(enabled)
+    }
+
+    suspend fun setSoundQualityPriority(qualityPriority: Boolean): Result<Unit> {
+        return connectionManager.setSoundQualityPriority(qualityPriority)
     }
 
     companion object {

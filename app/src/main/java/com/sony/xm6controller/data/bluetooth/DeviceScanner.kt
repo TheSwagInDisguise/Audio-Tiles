@@ -8,9 +8,17 @@ import android.bluetooth.BluetoothManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import com.sony.xm6controller.data.protocol.MdrConstants
 
 /**
- * Handles Bluetooth device discovery from paired list and model matching.
+ * Universal Bluetooth Device Scanner for Sony Headphones and True Wireless Earbuds.
+ *
+ * Supports:
+ * - Over-Ear Flagships: WH-1000XM6, WH-1000XM5, WH-1000XM4, WH-1000XM3, MDR-1000X
+ * - Lifestyle & Bass: WH-ULT900N (ULT WEAR), WH-XB910N, WH-XB900N, WH-CH720N, WH-CH520
+ * - True Wireless Earbuds: WF-1000XM5, WF-1000XM4, WF-1000XM3, WF-C700N, WF-C510
+ * - LinkBuds Series: LinkBuds (WF-L900), LinkBuds S (WF-LS900N), LinkBuds Open, LinkBuds Fit
+ * - Neckbands: WI-1000XM2, WI-1000X, WI-C100
  */
 class DeviceScanner(private val context: Context) {
 
@@ -37,12 +45,41 @@ class DeviceScanner(private val context: Context) {
     }
 
     /**
-     * Finds the paired Sony WH-1000XM6 headphone.
-     *
-     * Priority:
-     * 1. Exact match for "WH-1000XM6"
-     * 2. Device containing "1000XM6"
-     * 3. Fallback to any paired Sony 1000X series device ("WH-1000XM5", "WH-1000XM4")
+     * Identifies if a Bluetooth device is a Sony audio product.
+     */
+    @SuppressLint("MissingPermission")
+    fun isSonyAudioDevice(device: BluetoothDevice): Boolean {
+        val name = device.name?.uppercase() ?: ""
+        if (name.startsWith("WH-") || name.startsWith("WF-") || name.startsWith("WI-") ||
+            name.startsWith("MDR-") || name.contains("LINKBUDS") || name.contains("ULT900") ||
+            name.contains("1000X") || name.contains("SONY")
+        ) {
+            return true
+        }
+
+        // Check SDP UUIDs for Sony MDR custom service record
+        val uuids = try { device.uuids } catch (_: SecurityException) { null }
+        if (uuids != null) {
+            for (record in uuids) {
+                val u = record.uuid
+                if (u == MdrConstants.UUID_SONY_V2_PRIMARY ||
+                    u == MdrConstants.UUID_SONY_V1 ||
+                    u == MdrConstants.UUID_SONY_ALT ||
+                    u == MdrConstants.UUID_SONY_V2_SECONDARY
+                ) {
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    /**
+     * Finds the target paired Sony device with intelligent fallback priority:
+     * 1. Exact match for preferred address (if provided)
+     * 2. WH-1000XM6
+     * 3. Any 1000X series (WH-1000XM5, WF-1000XM5, XM4, XM3)
+     * 4. LinkBuds, ULT WEAR, or other Sony audio products
      */
     @SuppressLint("MissingPermission")
     fun findTargetDevice(preferredAddress: String? = null): BluetoothDevice? {
@@ -64,32 +101,35 @@ class DeviceScanner(private val context: Context) {
         // 1. Direct XM6 match
         val xm6 = paired.firstOrNull { dev ->
             val name = dev.name ?: ""
-            name.contains("WH-1000XM6", ignoreCase = true) ||
-                    name.contains("1000XM6", ignoreCase = true)
+            name.contains("WH-1000XM6", ignoreCase = true) || name.contains("1000XM6", ignoreCase = true)
         }
         if (xm6 != null) return xm6
 
-        // 2. Fallback to XM series if user is testing with XM5 or XM4
-        return paired.firstOrNull { dev ->
+        // 2. XM5 / XM4 / WF series
+        val xmSeries = paired.firstOrNull { dev ->
             val name = dev.name ?: ""
-            name.contains("WH-1000XM", ignoreCase = true) ||
-                    name.contains("WF-1000XM", ignoreCase = true) ||
-                    name.contains("ULT900N", ignoreCase = true)
+            name.contains("1000XM", ignoreCase = true)
         }
+        if (xmSeries != null) return xmSeries
+
+        // 3. Any other Sony headphone/earbud
+        return paired.firstOrNull { isSonyAudioDevice(it) }
     }
 
     /**
-     * Returns all paired Bluetooth audio devices for the UI selector.
+     * Returns all paired Bluetooth audio devices for the UI selector,
+     * sorting Sony devices to the top.
      */
     @SuppressLint("MissingPermission")
     fun getPairedDevices(): List<BluetoothDevice> {
         if (!hasBluetoothPermission() || bluetoothAdapter == null) {
             return emptyList()
         }
-        return try {
+        val devices = try {
             bluetoothAdapter.bondedDevices.toList()
         } catch (_: SecurityException) {
             emptyList()
         }
+        return devices.sortedByDescending { isSonyAudioDevice(it) }
     }
 }

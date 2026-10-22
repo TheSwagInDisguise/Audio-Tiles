@@ -15,8 +15,12 @@ import com.sony.xm6controller.data.protocol.MdrFrameEncoder
 import com.sony.xm6controller.data.protocol.MdrPacket
 import com.sony.xm6controller.data.protocol.MdrResponseParser
 import com.sony.xm6controller.domain.BatteryState
+import com.sony.xm6controller.domain.EqPreset
+import com.sony.xm6controller.domain.EqualizerState
 import com.sony.xm6controller.domain.NoiseControlMode
 import com.sony.xm6controller.domain.NoiseControlState
+import com.sony.xm6controller.domain.SoundFeaturesState
+import com.sony.xm6controller.domain.SpeakToChatState
 import com.sony.xm6controller.domain.TileCycleScheme
 import com.sony.xm6controller.service.XM6ForegroundService
 import kotlinx.coroutines.CompletableDeferred
@@ -76,6 +80,12 @@ class BluetoothConnectionManager private constructor(private val context: Contex
 
     private val _batteryState = MutableStateFlow(BatteryState())
     val batteryState: StateFlow<BatteryState> = _batteryState.asStateFlow()
+
+    private val _equalizerState = MutableStateFlow(EqualizerState())
+    val equalizerState: StateFlow<EqualizerState> = _equalizerState.asStateFlow()
+
+    private val _soundFeaturesState = MutableStateFlow(SoundFeaturesState())
+    val soundFeaturesState: StateFlow<SoundFeaturesState> = _soundFeaturesState.asStateFlow()
 
     private val _tileCycleScheme = MutableStateFlow(TileCycleScheme.ALL_THREE)
     val tileCycleScheme: StateFlow<TileCycleScheme> = _tileCycleScheme.asStateFlow()
@@ -232,12 +242,23 @@ class BluetoothConnectionManager private constructor(private val context: Contex
             addLog("ASC query not answered yet; ready for mode commands.")
         }
 
-        // Query initial Battery State (0x22 0x00)
-        queryBatteryInternal()
+        // Query initial Battery State on confirmed V2 devices (Opcode 0x22 powers off legacy V1 devices!)
+        val isV1 = (_noiseControlState.value.subtype == MdrConstants.SUBTYPE_NC_ASM_V1 || _noiseControlState.value.subtype == 0x01.toByte())
+        if (!isV1) {
+            queryBatteryInternal()
+            queryEqualizerInternal()
+        } else {
+            addLog("Legacy MDR V1 detected: Battery opcode 0x22 omitted for device safety.")
+        }
 
         _connectionState.value = ConnectionState.Connected(deviceName, address)
         touchActivity()
         return Result.success(Unit)
+    }
+
+    private suspend fun queryEqualizerInternal() {
+        val frame = MdrCommandBuilder.buildGetEqualizerFrame(txSequence)
+        sendRawBytes(frame)
     }
 
     /**
@@ -458,6 +479,171 @@ class BluetoothConnectionManager private constructor(private val context: Contex
     }
 
     /**
+     * Sets Sony Equalizer preset (Off, Bright, Excited, Bass Boost, Custom, etc.)
+     */
+    suspend fun setEqualizerPreset(preset: EqPreset): Result<Unit> = commandMutex.withLock {
+        if (socketWrapper?.isConnected != true) {
+            val conn = connect()
+            if (conn.isFailure) return conn
+        }
+        addLog("Setting EQ Preset: ${preset.displayName}...")
+        val frame = MdrCommandBuilder.buildSetEqualizerPresetFrame(txSequence, preset)
+        sendRawBytes(frame)
+        _equalizerState.value = _equalizerState.value.copy(preset = preset)
+        touchActivity()
+        return Result.success(Unit)
+    }
+
+    /**
+     * Sets 5-Band Equalizer values and Clear Bass.
+     */
+    suspend fun setEqualizerBands(
+        preset: EqPreset = EqPreset.CUSTOM_1,
+        clearBass: Int,
+        bands: List<Int>
+    ): Result<Unit> = commandMutex.withLock {
+        if (socketWrapper?.isConnected != true) {
+            val conn = connect()
+            if (conn.isFailure) return conn
+        }
+        addLog("Applying 5-band Equalizer (Clear Bass: $clearBass)...")
+        val frame = MdrCommandBuilder.buildSetEqualizerBandsFrame(
+            seq = txSequence,
+            preset = preset,
+            clearBass = clearBass,
+            bands = bands
+        )
+        sendRawBytes(frame)
+        _equalizerState.value = EqualizerState(
+            preset = preset,
+            clearBass = clearBass,
+            band400Hz = bands.getOrElse(0) { 0 },
+            band1kHz = bands.getOrElse(1) { 0 },
+            band2_5kHz = bands.getOrElse(2) { 0 },
+            band6_3kHz = bands.getOrElse(3) { 0 },
+            band16kHz = bands.getOrElse(4) { 0 }
+        )
+        touchActivity()
+        return Result.success(Unit)
+    }
+
+    /**
+     * Queries current Equalizer curve from device.
+     */
+    suspend fun queryEqualizer(): Result<Unit> = commandMutex.withLock {
+        if (socketWrapper?.isConnected != true) {
+            val conn = connect()
+            if (conn.isFailure) return conn
+        }
+        val frame = MdrCommandBuilder.buildGetEqualizerFrame(txSequence)
+        sendRawBytes(frame)
+        touchActivity()
+        return Result.success(Unit)
+    }
+
+    /**
+     * Toggles Speak-to-Chat (automatic ambient passthrough on user speech).
+     */
+    suspend fun setSpeakToChat(
+        enabled: Boolean,
+        sensitivity: Int = 1,
+        timeout: Int = 1
+    ): Result<Unit> = commandMutex.withLock {
+        if (socketWrapper?.isConnected != true) {
+            val conn = connect()
+            if (conn.isFailure) return conn
+        }
+        addLog("Setting Speak-to-Chat: $enabled (sens=$sensitivity, timeout=$timeout)...")
+        val frame = MdrCommandBuilder.buildSetSpeakToChatFrame(txSequence, enabled, sensitivity, timeout)
+        sendRawBytes(frame)
+        _soundFeaturesState.value = _soundFeaturesState.value.copy(
+            speakToChat = SpeakToChatState(enabled = enabled, sensitivity = sensitivity, timeout = timeout)
+        )
+        touchActivity()
+        return Result.success(Unit)
+    }
+
+    /**
+     * Toggles DSEE Extreme (audio upscaling).
+     */
+    suspend fun setDsee(enabled: Boolean): Result<Unit> = commandMutex.withLock {
+        if (socketWrapper?.isConnected != true) {
+            val conn = connect()
+            if (conn.isFailure) return conn
+        }
+        addLog("Setting DSEE Extreme: $enabled...")
+        val frame = MdrCommandBuilder.buildSetDseeFrame(txSequence, enabled)
+        sendRawBytes(frame)
+        _soundFeaturesState.value = _soundFeaturesState.value.copy(dseeExtreme = enabled)
+        touchActivity()
+        return Result.success(Unit)
+    }
+
+    /**
+     * Toggles "Pause when headphones are taken off".
+     */
+    suspend fun setWearingPause(enabled: Boolean): Result<Unit> = commandMutex.withLock {
+        if (socketWrapper?.isConnected != true) {
+            val conn = connect()
+            if (conn.isFailure) return conn
+        }
+        addLog("Setting Pause on Removal: $enabled...")
+        val frame = MdrCommandBuilder.buildSetWearingPauseFrame(txSequence, enabled)
+        sendRawBytes(frame)
+        _soundFeaturesState.value = _soundFeaturesState.value.copy(wearingPause = enabled)
+        touchActivity()
+        return Result.success(Unit)
+    }
+
+    /**
+     * Configures Auto Power-Off timer (0=Never, 1=5m, 2=30m, 3=60m, 4=180m).
+     */
+    suspend fun setAutoPowerOff(timerIndex: Int): Result<Unit> = commandMutex.withLock {
+        if (socketWrapper?.isConnected != true) {
+            val conn = connect()
+            if (conn.isFailure) return conn
+        }
+        addLog("Setting Auto Power-Off timer index: $timerIndex...")
+        val frame = MdrCommandBuilder.buildSetAutoPowerOffFrame(txSequence, timerIndex)
+        sendRawBytes(frame)
+        _soundFeaturesState.value = _soundFeaturesState.value.copy(autoPowerOffIndex = timerIndex)
+        touchActivity()
+        return Result.success(Unit)
+    }
+
+    /**
+     * Toggles Touch Sensor Control Panel on headphone earcup.
+     */
+    suspend fun setTouchSensor(enabled: Boolean): Result<Unit> = commandMutex.withLock {
+        if (socketWrapper?.isConnected != true) {
+            val conn = connect()
+            if (conn.isFailure) return conn
+        }
+        addLog("Setting Touch Sensor Panel: $enabled...")
+        val frame = MdrCommandBuilder.buildSetTouchSensorFrame(txSequence, enabled)
+        sendRawBytes(frame)
+        _soundFeaturesState.value = _soundFeaturesState.value.copy(touchSensorEnabled = enabled)
+        touchActivity()
+        return Result.success(Unit)
+    }
+
+    /**
+     * Toggles Sound Quality Mode (Sound Quality Priority LDAC vs Stable Connection AAC/SBC).
+     */
+    suspend fun setSoundQualityPriority(qualityPriority: Boolean): Result<Unit> = commandMutex.withLock {
+        if (socketWrapper?.isConnected != true) {
+            val conn = connect()
+            if (conn.isFailure) return conn
+        }
+        addLog("Setting Sound Quality Mode: ${if (qualityPriority) "Priority on Sound Quality" else "Priority on Stable Connection"}...")
+        val frame = MdrCommandBuilder.buildSetSoundQualityPriorityFrame(txSequence, qualityPriority)
+        sendRawBytes(frame)
+        _soundFeaturesState.value = _soundFeaturesState.value.copy(soundQualityPriority = qualityPriority)
+        touchActivity()
+        return Result.success(Unit)
+    }
+
+    /**
      * Transmits raw bytes over active Bluetooth socket.
      */
     private suspend fun sendRawBytes(bytes: ByteArray): Boolean {
@@ -560,10 +746,44 @@ class BluetoothConnectionManager private constructor(private val context: Contex
 
                 // Check for Battery Telemetry (0x23 RET or 0x24 NOTIFY)
                 if (payload.size >= 3 && (payload[0] == MdrConstants.OP_BATTERY_RET || payload[0] == MdrConstants.OP_BATTERY_NOTIFY)) {
-                    val level = payload[2].toInt() and 0xFF
-                    val isCharging = if (payload.size >= 4) (payload[3].toInt() != 0) else false
-                    _batteryState.value = BatteryState(level = level, isCharging = isCharging)
-                    addLog("Battery Telemetry: $level% ${if (isCharging) "(Charging)" else ""}")
+                    val battery = MdrResponseParser.parseBatteryState(payload)
+                    if (battery != null) {
+                        _batteryState.value = battery
+                        addLog("Battery Telemetry: ${battery.displayString}")
+                    }
+                    touchActivity()
+                    return
+                }
+
+                // Check for Equalizer Telemetry (0x57 RET or 0x59 NOTIFY)
+                if (payload.size >= 3 && (payload[0] == MdrConstants.OP_EQ_RET || payload[0] == MdrConstants.OP_EQ_NOTIFY)) {
+                    val eq = MdrResponseParser.parseEqualizerState(payload)
+                    if (eq != null) {
+                        _equalizerState.value = eq
+                        addLog("Equalizer State: ${eq.preset.displayName} (Clear Bass: ${eq.clearBass})")
+                    }
+                    touchActivity()
+                    return
+                }
+
+                // Check for Speak-to-Chat (0xF7 RET or 0xF9 NOTIFY)
+                if (payload.size >= 3 && (payload[0] == MdrConstants.OP_STC_RET || payload[0] == MdrConstants.OP_STC_NOTIFY)) {
+                    val stc = MdrResponseParser.parseSpeakToChatState(payload)
+                    if (stc != null) {
+                        _soundFeaturesState.value = _soundFeaturesState.value.copy(speakToChat = stc)
+                        addLog("Speak-to-Chat State: ${if (stc.enabled) "ON" else "OFF"}")
+                    }
+                    touchActivity()
+                    return
+                }
+
+                // Check for DSEE Extreme (0xE7 RET or 0xE9 NOTIFY)
+                if (payload.size >= 3 && (payload[0] == MdrConstants.OP_DSEE_RET || payload[0] == MdrConstants.OP_DSEE_NOTIFY)) {
+                    val dsee = MdrResponseParser.parseDseeState(payload)
+                    if (dsee != null) {
+                        _soundFeaturesState.value = _soundFeaturesState.value.copy(dseeExtreme = dsee)
+                        addLog("DSEE Extreme State: ${if (dsee) "AUTO" else "OFF"}")
+                    }
                     touchActivity()
                     return
                 }

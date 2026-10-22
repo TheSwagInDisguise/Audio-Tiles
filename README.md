@@ -31,11 +31,37 @@ Optimized specifically for **ColorOS / Oppo Find X9 Ultra** with dedicated backg
 
 ## 🎧 Features
 
+## 🎧 Universal Sony Ecosystem & Sound Connect Features
+
+- **Universal Device Discovery & Auto-Matching**:
+  - **Over-Ear Flagships & Lifestyle**: WH-1000XM6, WH-1000XM5, WH-1000XM4, WH-1000XM3, WH-ULT900N (ULT WEAR), WH-CH720N, WH-CH520, WH-XB910N, MDR-1000X.
+  - **True Wireless (TWS) Earbuds**: WF-1000XM5, WF-1000XM4, WF-1000XM3, LinkBuds (WF-L900), LinkBuds S (WF-LS900N), LinkBuds Open / Fit, WF-C700N, WF-C510.
+  - **Neckbands & In-Ear**: WI-1000XM2, WI-1000X, WI-C100.
+  - Auto-discovery filters bonded devices by name prefix or advertised Sony SDP service records.
+
+- **Sound Connect Feature Parity**:
+  - **5-Band Graphic Equalizer & Clear Bass**: 400Hz, 1.0kHz, 2.5kHz, 6.3kHz, and 16kHz sliders (-10 dB to +10 dB) plus Sony Clear Bass sub-frequency boost (-10 to +10).
+  - **Equalizer Presets**: Direct access to all Sony hardware EQ curves (*Bright, Excited, Mellow, Relaxed, Vocal, Treble Boost, Bass Boost, Speech, Manual, Custom 1, Custom 2*).
+  - **Speak-to-Chat (Smart Talking Mode)**: Automatic ambient passthrough when the user speaks, with configurable sensitivity and resume timeouts.
+  - **DSEE Extreme (AI Audio Restoration)**: Hardware upscaling of compressed Bluetooth audio streams.
+  - **Wearing Detection (Auto-Pause)**: Optical/capacitive sensor integration that pauses playback when headphones or earbuds are removed.
+  - **Auto Power-Off Timer**: Custom standby countdown (Never, 5 min, 30 min, 60 min, 180 min).
+  - **Touch Sensor Control Panel**: Hardware toggle to enable or disable earcup touch swipe/tap gestures.
+  - **Sound Quality Mode**: Switch between Sound Quality Priority (LDAC high-resolution) and Stable Connection (AAC/SBC).
+
+- **Multi-Cell Battery Telemetry (Over-Ear & TWS)**:
+  - Single percentage and charging status for over-ear headphones.
+  - Independent telemetry for **Left Earbud (L %)**, **Right Earbud (R %)**, and **Charging Case (Case %)** for true wireless models.
+
+- **MDR Protocol V2 & V1 Hybrid Engine**:
+  - Dynamic subtype auto-negotiation (V2 `0x17` with wind byte vs V1 legacy `0x07` 7-byte payloads).
+  - **V1 Safety Protection**: Opcode `0x22` (battery GET on V2) acts as *Power-Off* on V1 devices. The engine detects legacy models and safely suppresses `0x22` to prevent shutdown.
+
 - **Instant Quick Settings Tile**: Tap the Quick Settings tile from anywhere (even when music or video is playing) to cycle noise control modes:
   $$\text{Noise Cancelling (NC On)} \longrightarrow \text{Ambient Sound (Ambient)} \longrightarrow \text{Off (ANC Off)} \longrightarrow \text{Noise Cancelling}$$
 - **Native Sony MDR Protocol**: Implements the second-generation (`v2`) MDR RFCOMM protocol from `mos9527/SonyHeadphonesClient`, `marconvcm/sony-device-center`, and `Gadgetbridge`. No proprietary OEM apps, accounts, or telemetry required.
-- **Alternating ARQ & Bidirectional ACK**: Full framing, byte-level escaping, 8-bit checksum calculation, and automatic host ACK responses to keep the XM6 socket synchronized without dropouts.
-- **Real-Time Physical Button Sync**: Automatically listens for unsolicited `0x69` notification frames pushed when the physical NC/AMB button on the headset is pressed, updating both the Quick Settings Tile and Compose UI instantaneously.
+- **Alternating ARQ & Bidirectional ACK**: Full framing, byte-level escaping, 8-bit checksum calculation, and automatic host ACK responses to keep the socket synchronized without dropouts.
+- **Real-Time Physical Button Sync**: Automatically listens for unsolicited `0x69` notification frames pushed when physical NC/AMB buttons or earbud touch sensors are triggered.
 - **ColorOS Guardrails for Oppo Find X9 Ultra**:
   - Employs temporary `PowerManager.PARTIAL_WAKE_LOCK` (10s max) during tile taps to guarantee the CPU does not sleep when SystemUI closes the shade.
   - **Multi-tier Bluetooth RFCOMM Fallback Engine**:

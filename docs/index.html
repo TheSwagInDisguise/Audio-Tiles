@@ -843,8 +843,8 @@
         <li><a href="#protocol" class="nav-link">MDR Protocol</a></li>
         <li><a href="#setup" class="nav-link">Quick Setup</a></li>
       </ul>
-      <a href="https://github.com/karkarbinksjar-hash/Sony-XM6-Tiles/releases/download/v1.0.2/Sony-XM6-NoiseControl-v1.0.2.apk" class="nav-cta-btn">
-        Download APK v1.0.2
+      <a href="https://github.com/karkarbinksjar-hash/Sony-XM6-Tiles/releases/download/v1.0.3/Sony-XM6-NoiseControl-v1.0.3.apk" class="nav-cta-btn">
+        Download APK v1.0.3
       </a>
     </div>
   </header>
@@ -854,26 +854,25 @@
     <div class="container">
       <div class="badge-release">
         <span class="badge-dot"></span>
-        v1.0.2 Released • Target Android 14+ / ColorOS 14+
+        v1.0.3 Universal Release • Full Sony Ecosystem & Sound Connect Parity
       </div>
       <h1 class="hero-title">
-        Instant Noise Control from Your<br>
-        <span>Android Notification Shade</span>
+        Universal Noise Control & EQ for<br>
+        <span>Sony Headphones & Earbuds</span>
       </h1>
       <p class="hero-subtitle">
-        A lightweight, open-source Android Quick Settings Tile for the <strong>Sony WH-1000XM6</strong>.
-        Cycle between Noise Cancelling, Ambient Sound, and Off with zero latency, real-time battery telemetry,
-        and ColorOS background safeguards.
+        A lightweight, open-source Android Quick Settings Tile & Sound Connect Hub for <strong>Sony WH-1000XM6, XM5, XM4, WF-1000XM5, LinkBuds, and ULT WEAR</strong>.
+        Sub-50ms RFCOMM switching, 5-band graphic equalizer, Speak-to-Chat, TWS multi-battery telemetry, and ColorOS background safeguards.
       </p>
 
       <div class="hero-actions">
-        <a href="https://github.com/karkarbinksjar-hash/Sony-XM6-Tiles/releases/download/v1.0.2/Sony-XM6-NoiseControl-v1.0.2.apk" class="btn-primary">
+        <a href="https://github.com/karkarbinksjar-hash/Sony-XM6-Tiles/releases/download/v1.0.3/Sony-XM6-NoiseControl-v1.0.3.apk" class="btn-primary">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="7 10 12 15 17 10"></polyline>
             <line x1="12" y1="15" x2="12" y2="3"></line>
           </svg>
-          Download Signed APK (v1.0.2)
+          Download Signed APK (v1.0.3)
         </a>
         <a href="https://github.com/karkarbinksjar-hash/Sony-XM6-Tiles" class="btn-secondary" target="_blank" rel="noopener noreferrer">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -903,8 +902,17 @@
   <section id="demo" class="container">
     <h2 class="section-title">Interactive Protocol Simulator</h2>
     <p class="section-subtitle">
-      Test how the Quick Settings Tile and Sony MDR v2 protocol frames operate directly in your browser.
+      Test how the Quick Settings Tile, Sony MDR v2 protocol frames, and 5-band Graphic Equalizer operate directly in your browser.
     </p>
+
+    <!-- Compatibility Pills -->
+    <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 36px;">
+      <span style="background: rgba(212, 155, 106, 0.15); border: 1px solid var(--copper); color: var(--gold); padding: 4px 14px; border-radius: 20px; font-size: 0.82rem; font-weight: 600;">WH-1000XM6 / XM5 / XM4 / XM3</span>
+      <span style="background: rgba(16, 185, 129, 0.15); border: 1px solid var(--anc-green); color: var(--anc-green); padding: 4px 14px; border-radius: 20px; font-size: 0.82rem; font-weight: 600;">WF-1000XM5 / WF-1000XM4 (TWS)</span>
+      <span style="background: rgba(56, 189, 248, 0.15); border: 1px solid var(--ambient-blue); color: var(--ambient-blue); padding: 4px 14px; border-radius: 20px; font-size: 0.82rem; font-weight: 600;">LinkBuds / LinkBuds S / Open / Fit</span>
+      <span style="background: rgba(240, 178, 122, 0.15); border: 1px solid var(--gold); color: var(--gold); padding: 4px 14px; border-radius: 20px; font-size: 0.82rem; font-weight: 600;">WH-ULT900N (ULT WEAR)</span>
+      <span style="background: rgba(148, 163, 184, 0.15); border: 1px solid var(--border-color); color: var(--text-muted); padding: 4px 14px; border-radius: 20px; font-size: 0.82rem; font-weight: 600;">WH-CH720N / WF-C700N</span>
+    </div>
 
     <div class="interactive-grid">
       <!-- 1. Quick Settings Tile Simulator -->
@@ -936,42 +944,50 @@
         </div>
       </div>
 
-      <!-- 2. Ambient Sound & Telemetry Simulator -->
+      <!-- 2. 5-Band Equalizer & Clear Bass Simulator -->
       <div class="interactive-card">
         <div class="card-heading">
-          <span>🎛️ Ambient Sound & Voice Granularity</span>
+          <span>🎚️ 5-Band Graphic Equalizer & Clear Bass</span>
         </div>
         <p class="card-desc">
-          Drag the ambient microphone passthrough slider (Levels 1 to 20) and toggle hardware speech enhancement.
+          Adjust Sony's hardware DSP curves in real time. Features Clear Bass and five discrete EQ bands (-10 to +10 dB).
         </p>
 
         <div class="slider-control-group">
           <div class="slider-header-flex">
-            <span>Ambient Passthrough Level</span>
-            <span class="slider-val-display" id="ambientLevelVal">14</span>
+            <span>Clear Bass Sub-Woofer</span>
+            <span class="slider-val-display" id="cbValDisplay">+5 dB</span>
           </div>
-          <input type="range" id="ambientSlider" min="1" max="20" value="14">
+          <input type="range" id="cbSlider" min="-10" max="10" value="5">
+        </div>
+
+        <div class="slider-control-group">
+          <div class="slider-header-flex">
+            <span>1.0 kHz Mid Vocal Band</span>
+            <span class="slider-val-display" id="midValDisplay">+2 dB</span>
+          </div>
+          <input type="range" id="midSlider" min="-10" max="10" value="2">
         </div>
 
         <div class="toggle-row">
-          <span class="toggle-label">Focus on Voice (Speech Band Filter)</span>
+          <span class="toggle-label">Speak-to-Chat (Auto Passthrough)</span>
           <label class="switch-ui">
-            <input type="checkbox" id="voiceToggle">
+            <input type="checkbox" id="stcToggle">
             <span class="slider-round"></span>
           </label>
         </div>
 
         <div class="toggle-row">
-          <span class="toggle-label">Automatic Wind Noise Suppression</span>
+          <span class="toggle-label">DSEE Extreme (AI Audio Upscaling)</span>
           <label class="switch-ui">
-            <input type="checkbox" id="windToggle" checked>
+            <input type="checkbox" id="dseeToggle" checked>
             <span class="slider-round"></span>
           </label>
         </div>
 
         <div class="protocol-packet-inspector">
-          <div class="packet-label">Generated ASC Command Payload</div>
-          <div id="ambientPacketDisplay">0x68 (SET), 0x17 (ASC), On=0x01, Amb=0x01, Wind=0x03, Voice=0x00, Level=0x0E</div>
+          <div class="packet-label">Generated Equalizer Set Packet (Opcode 0x58)</div>
+          <div id="eqPacketDisplay">0x58 (SET_EQ), 0x00, Preset=0xA0 (Custom), Bands=0x06, CB=15, 10, 12, 10, 10, 10</div>
         </div>
       </div>
     </div>
@@ -1131,7 +1147,7 @@
         <div class="step-num">1</div>
         <h3 class="step-title">Install Signed APK</h3>
         <p class="step-text">
-          Download and install <code>Sony-XM6-NoiseControl-v1.0.2.apk</code>. All builds are signed with a verified persistent keystore.
+          Download and install <code>Sony-XM6-NoiseControl-v1.0.3.apk</code>. All builds are signed with a verified persistent keystore.
         </p>
       </div>
 
@@ -1228,26 +1244,33 @@
       tilePacket.textContent = state.packet;
     });
 
-    // 3. Ambient Slider Simulator
-    const ambientSlider = document.getElementById('ambientSlider');
-    const ambientVal = document.getElementById('ambientLevelVal');
-    const voiceToggle = document.getElementById('voiceToggle');
-    const windToggle = document.getElementById('windToggle');
-    const ambientPacket = document.getElementById('ambientPacketDisplay');
+    // 3. Equalizer & Hardware Features Simulator
+    const cbSlider = document.getElementById('cbSlider');
+    const cbVal = document.getElementById('cbValDisplay');
+    const midSlider = document.getElementById('midSlider');
+    const midVal = document.getElementById('midValDisplay');
+    const stcToggle = document.getElementById('stcToggle');
+    const dseeToggle = document.getElementById('dseeToggle');
+    const eqPacket = document.getElementById('eqPacketDisplay');
 
-    function updateAmbientPacket() {
-      const level = parseInt(ambientSlider.value, 10);
-      ambientVal.textContent = level;
-      const isVoice = voiceToggle.checked ? '0x01' : '0x00';
-      const windByte = windToggle.checked ? '0x03' : '0x00';
-      const hexLevel = '0x' + level.toString(16).toUpperCase().padStart(2, '0');
+    function updateEqPacket() {
+      const cb = parseInt(cbSlider.value, 10);
+      const mid = parseInt(midSlider.value, 10);
+      cbVal.textContent = (cb > 0 ? '+' : '') + cb + ' dB';
+      midVal.textContent = (mid > 0 ? '+' : '') + mid + ' dB';
 
-      ambientPacket.textContent = `0x68 (SET), 0x17 (ASC), On=0x01, Amb=0x01, Wind=${windByte}, Voice=${isVoice}, Level=${hexLevel}`;
+      const cbOffset = cb + 10;
+      const midOffset = mid + 10;
+      const stcStatus = stcToggle.checked ? 'ON' : 'OFF';
+      const dseeStatus = dseeToggle.checked ? 'AUTO' : 'OFF';
+
+      eqPacket.textContent = `0x58 (SET_EQ), Preset=0xA0 (Custom), CB=${cbOffset}, 10, ${midOffset}, 10, 10, 10 | STC=${stcStatus} | DSEE=${dseeStatus}`;
     }
 
-    ambientSlider.addEventListener('input', updateAmbientPacket);
-    voiceToggle.addEventListener('change', updateAmbientPacket);
-    windToggle.addEventListener('change', updateAmbientPacket);
+    cbSlider.addEventListener('input', updateEqPacket);
+    midSlider.addEventListener('input', updateEqPacket);
+    stcToggle.addEventListener('change', updateEqPacket);
+    dseeToggle.addEventListener('change', updateEqPacket);
   </script>
 
 </body>

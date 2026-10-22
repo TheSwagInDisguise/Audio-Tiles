@@ -1,23 +1,27 @@
 package com.sony.xm6controller.data.protocol
 
+import com.sony.xm6controller.domain.EqPreset
 import com.sony.xm6controller.domain.NoiseControlMode
 import com.sony.xm6controller.domain.NoiseControlState
 
 /**
- * Sony MDR Command Payload Builder.
+ * Universal Sony MDR Command Payload Builder.
  *
- * Constructs byte payloads for MDR commands:
+ * Constructs byte payloads for Sony MDR v1 and v2 commands:
  * - Handshake/Initialization: [0x00, 0x00]
  * - ASC Query (GET): [0x66, subtype]
- * - ASC Modification (SET): [0x68, subtype, 0x01, on, amb, wind, voice, level]
+ * - ASC Modification (SET): V2 [0x68, 0x17, 0x01, on, amb, wind, voice, level]
+ *                           V1 [0x68, 0x07, 0x01, on, amb, voice, level]
+ * - Equalizer (5 Bands + Clear Bass + Presets): Opcode 0x58
+ * - Speak-to-Chat: Opcode 0xF8
+ * - DSEE Extreme: Opcode 0xE8
+ * - Wearing Pause & Auto Power-Off: Opcode 0xD8
+ * - Touch Sensor: Opcode 0xC8
  */
 object MdrCommandBuilder {
 
     /**
      * Handshake initialization request payload.
-     * Required by Sony MDR v2 protocol immediately after RFCOMM socket connection.
-     * Sony headphones ignore any subsequent command until this handshake succeeds.
-     *
      * Wire layout: [0x00, 0x00]
      */
     fun buildHandshakePayload(): ByteArray {
@@ -28,39 +32,19 @@ object MdrCommandBuilder {
     }
 
     /**
-     * Query current Ambient Sound Control (ANC/Ambient/Off) status.
-     *
-     * @param subtype 0x17 for standard MDR v2 (XM5/XM6), or 0x15 for alternate firmware
-     * Wire layout: [0x66, subtype]
+     * Query current Ambient Sound Control status.
+     * @param subtype 0x17 for MDR v2 (XM5/XM6/LinkBuds/ULT), 0x07 for legacy v1 (XM4/XM3)
      */
     fun buildGetNoiseControlPayload(subtype: Byte = MdrConstants.SUBTYPE_NC_ASM_V2): ByteArray {
         return byteArrayOf(
             MdrConstants.OP_ASC_GET, // 0x66
-            subtype                  // 0x17 or 0x15
+            subtype
         )
     }
 
     /**
-     * Constructs a SET command payload to switch the headphone's noise control mode.
-     *
-     * If a cached state with raw payload from an earlier GET/NOTIFY is available,
-     * this updates the active bytes while preserving any model-specific flags.
-     * Otherwise, constructs the standard 8-byte Sony XM5/XM6 payload.
-     *
-     * @param targetMode Target mode: NOISE_CANCELLING, AMBIENT_SOUND, or OFF
-     * @param currentState Optional last-known state for field preservation
-     * @param ambientLevel Ambient sound volume (1..20, default 20)
-     * @param focusOnVoice Enable voice enhancement in ambient mode
-     *
-     * Sony MDR v2 NC/ASM Payload Structure (8 bytes):
-     * [0] 0x68  (P_ASC_SET command opcode)
-     * [1] 0x17  (Inquired Subtype: NC_ASM_V2)
-     * [2] 0x01  (Configuration type indicator)
-     * [3] <on>  (0x01 = NC/Ambient active, 0x00 = Off/Normal)
-     * [4] <amb> (0x00 = Noise Cancelling, 0x01 = Ambient Sound)
-     * [5] 0x02  (Wind noise reduction: 0x02 = normal/off, 0x03 = wind reduction)
-     * [6] <voi> (0x00 = voice focus off, 0x01 = voice focus on)
-     * [7] <lvl> (Ambient volume level: 1 to 20, 0x01..0x14)
+     * Constructs a SET command payload to switch noise control mode.
+     * Automatically formats for either MDR v2 (with wind byte) or MDR v1 legacy (without wind byte).
      */
     fun buildSetNoiseControlPayload(
         targetMode: NoiseControlMode,
@@ -69,8 +53,9 @@ object MdrCommandBuilder {
         focusOnVoice: Boolean = false
     ): ByteArray {
         val raw = currentState?.rawPayload
-        val hasWind = currentState?.hasWindByte ?: true
         val subtype = currentState?.subtype ?: MdrConstants.SUBTYPE_NC_ASM_V2
+        val isV1 = (subtype == MdrConstants.SUBTYPE_NC_ASM_V1 || subtype == 0x01.toByte())
+        val hasWind = currentState?.hasWindByte ?: (!isV1)
         val clampedLevel = ambientLevel.coerceIn(MdrConstants.AMBIENT_LEVEL_MIN, MdrConstants.AMBIENT_LEVEL_MAX).toByte()
 
         if (raw != null && raw.size >= 7) {
@@ -115,7 +100,7 @@ object MdrCommandBuilder {
             return pl
         }
 
-        // Fresh frame generation for WH-1000XM6 (Standard 8-byte layout)
+        // Fresh frame generation
         val onByte: Byte
         val ambByte: Byte
 
@@ -134,6 +119,20 @@ object MdrCommandBuilder {
             }
         }
 
+        // V1 legacy 7-byte frame (XM3, XM4 legacy)
+        if (isV1) {
+            return byteArrayOf(
+                MdrConstants.OP_ASC_SET,
+                subtype,
+                0x01.toByte(),
+                onByte,
+                ambByte,
+                if (focusOnVoice) 0x01.toByte() else 0x00.toByte(),
+                clampedLevel
+            )
+        }
+
+        // V2 standard 8-byte frame (XM5, XM6, LinkBuds, ULT WEAR)
         val windByte = if (currentState?.windNoiseReduction == true && targetMode == NoiseControlMode.NOISE_CANCELLING) {
             MdrConstants.WIND_NOISE_REDUCTION_ON
         } else {
@@ -141,19 +140,19 @@ object MdrCommandBuilder {
         }
 
         return byteArrayOf(
-            MdrConstants.OP_ASC_SET,                        // 0x68
-            subtype,                                        // 0x17
-            0x01.toByte(),                                  // Config selector
-            onByte,                                         // On/Off (0x01 or 0x00)
-            ambByte,                                        // Mode (0x00 NC, 0x01 Ambient)
-            windByte,                                       // Wind noise reduction byte
-            if (focusOnVoice) 0x01.toByte() else 0x00.toByte(), // Voice focus
-            clampedLevel                                    // Ambient level (1..20)
+            MdrConstants.OP_ASC_SET,
+            subtype,
+            0x01.toByte(),
+            onByte,
+            ambByte,
+            windByte,
+            if (focusOnVoice) 0x01.toByte() else 0x00.toByte(),
+            clampedLevel
         )
     }
 
     /**
-     * Builds complete framed and escaped packet to query headphone battery level.
+     * Builds complete framed packet to query headphone battery level.
      */
     fun buildGetBatteryFrame(seq: Int): ByteArray {
         val payload = byteArrayOf(MdrConstants.OP_BATTERY_GET, 0x00)
@@ -165,7 +164,7 @@ object MdrCommandBuilder {
     }
 
     /**
-     * Builds complete framed and escaped packet for handshake.
+     * Builds complete framed packet for handshake.
      */
     fun buildHandshakeFrame(seq: Int): ByteArray {
         return MdrFrameEncoder.encode(
@@ -176,7 +175,7 @@ object MdrCommandBuilder {
     }
 
     /**
-     * Builds complete framed and escaped packet for ASC query.
+     * Builds complete framed packet for ASC query.
      */
     fun buildGetNoiseControlFrame(seq: Int, subtype: Byte = MdrConstants.SUBTYPE_NC_ASM_V2): ByteArray {
         return MdrFrameEncoder.encode(
@@ -187,7 +186,7 @@ object MdrCommandBuilder {
     }
 
     /**
-     * Builds complete framed and escaped packet for mode switch.
+     * Builds complete framed packet for mode switch.
      */
     fun buildSetNoiseControlFrame(
         seq: Int,
@@ -207,5 +206,103 @@ object MdrCommandBuilder {
             seq = seq,
             payload = payload
         )
+    }
+
+    // --- Equalizer & Clear Bass Builders ---
+
+    fun buildGetEqualizerFrame(seq: Int): ByteArray {
+        val payload = byteArrayOf(MdrConstants.OP_EQ_GET, 0x00)
+        return MdrFrameEncoder.encode(type = MdrConstants.TYPE_COMMAND_1, seq = seq, payload = payload)
+    }
+
+    fun buildSetEqualizerPresetFrame(seq: Int, preset: EqPreset): ByteArray {
+        val payload = byteArrayOf(MdrConstants.OP_EQ_SET, 0x00, preset.id.toByte(), 0x00)
+        return MdrFrameEncoder.encode(type = MdrConstants.TYPE_COMMAND_1, seq = seq, payload = payload)
+    }
+
+    fun buildSetEqualizerBandsFrame(
+        seq: Int,
+        preset: EqPreset = EqPreset.CUSTOM_1,
+        clearBass: Int = 0,
+        bands: List<Int> = listOf(0, 0, 0, 0, 0)
+    ): ByteArray {
+        // Values in MDR protocol are offset by +10: -10 dB -> 0, 0 dB -> 10, +10 dB -> 20
+        val cbByte = (clearBass.coerceIn(-10, 10) + 10).toByte()
+        val b0 = (bands.getOrElse(0) { 0 }.coerceIn(-10, 10) + 10).toByte()
+        val b1 = (bands.getOrElse(1) { 0 }.coerceIn(-10, 10) + 10).toByte()
+        val b2 = (bands.getOrElse(2) { 0 }.coerceIn(-10, 10) + 10).toByte()
+        val b3 = (bands.getOrElse(3) { 0 }.coerceIn(-10, 10) + 10).toByte()
+        val b4 = (bands.getOrElse(4) { 0 }.coerceIn(-10, 10) + 10).toByte()
+
+        val payload = byteArrayOf(
+            MdrConstants.OP_EQ_SET,
+            0x00,
+            preset.id.toByte(),
+            0x06.toByte(), // 6 band values follow (Clear Bass + 5 EQ bands)
+            cbByte,
+            b0,
+            b1,
+            b2,
+            b3,
+            b4
+        )
+        return MdrFrameEncoder.encode(type = MdrConstants.TYPE_COMMAND_1, seq = seq, payload = payload)
+    }
+
+    // --- Speak-to-Chat Builders ---
+
+    fun buildGetSpeakToChatFrame(seq: Int): ByteArray {
+        val payload = byteArrayOf(MdrConstants.OP_STC_GET, 0x0C)
+        return MdrFrameEncoder.encode(type = MdrConstants.TYPE_COMMAND_1, seq = seq, payload = payload)
+    }
+
+    fun buildSetSpeakToChatFrame(seq: Int, enabled: Boolean, sensitivity: Int = 1, timeout: Int = 1): ByteArray {
+        val onByte = if (enabled) 0x00.toByte() else 0x01.toByte()
+        val payload = byteArrayOf(
+            MdrConstants.OP_STC_SET,
+            0x0C,
+            onByte,
+            sensitivity.coerceIn(0, 2).toByte(),
+            timeout.coerceIn(0, 2).toByte()
+        )
+        return MdrFrameEncoder.encode(type = MdrConstants.TYPE_COMMAND_1, seq = seq, payload = payload)
+    }
+
+    // --- DSEE Extreme Builders ---
+
+    fun buildGetDseeFrame(seq: Int): ByteArray {
+        val payload = byteArrayOf(MdrConstants.OP_DSEE_GET, 0x01)
+        return MdrFrameEncoder.encode(type = MdrConstants.TYPE_COMMAND_1, seq = seq, payload = payload)
+    }
+
+    fun buildSetDseeFrame(seq: Int, enabled: Boolean): ByteArray {
+        val payload = byteArrayOf(MdrConstants.OP_DSEE_SET, 0x01, if (enabled) 0x01.toByte() else 0x00.toByte())
+        return MdrFrameEncoder.encode(type = MdrConstants.TYPE_COMMAND_1, seq = seq, payload = payload)
+    }
+
+    // --- Wearing Detection & Auto Power-Off Builders ---
+
+    fun buildSetWearingPauseFrame(seq: Int, enabled: Boolean): ByteArray {
+        val payload = byteArrayOf(MdrConstants.OP_SYSTEM_SET, 0x01, if (enabled) 0x01.toByte() else 0x00.toByte())
+        return MdrFrameEncoder.encode(type = MdrConstants.TYPE_COMMAND_1, seq = seq, payload = payload)
+    }
+
+    fun buildSetAutoPowerOffFrame(seq: Int, timerIndex: Int): ByteArray {
+        val payload = byteArrayOf(MdrConstants.OP_SYSTEM_SET, 0x02, timerIndex.coerceIn(0, 4).toByte())
+        return MdrFrameEncoder.encode(type = MdrConstants.TYPE_COMMAND_1, seq = seq, payload = payload)
+    }
+
+    // --- Touch Sensor Control Builder ---
+
+    fun buildSetTouchSensorFrame(seq: Int, enabled: Boolean): ByteArray {
+        val payload = byteArrayOf(MdrConstants.OP_TOUCH_SENSOR_SET, 0x01, if (enabled) 0x01.toByte() else 0x00.toByte())
+        return MdrFrameEncoder.encode(type = MdrConstants.TYPE_COMMAND_1, seq = seq, payload = payload)
+    }
+
+    // --- Sound Quality Mode (LDAC vs Stable Connection) ---
+
+    fun buildSetSoundQualityPriorityFrame(seq: Int, priorityQuality: Boolean): ByteArray {
+        val payload = byteArrayOf(MdrConstants.OP_ASC_SET, 0x05, 0x01, if (priorityQuality) 0x00.toByte() else 0x01.toByte())
+        return MdrFrameEncoder.encode(type = MdrConstants.TYPE_COMMAND_1, seq = seq, payload = payload)
     }
 }
