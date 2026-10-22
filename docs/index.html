@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sony WH-1000XM6 Quick Settings Noise Control Tile</title>
-  <meta name="description" content="Instant noise cancellation cycling directly from your Android notification shade for Sony WH-1000XM6. Sub-50ms RFCOMM switching, ColorOS optimized, zero tracking.">
+  <title>Sony Audio Tiles — Universal Sony Headphones & TWS Quick Settings Control & PEQ Studio</title>
+  <meta name="description" content="Instant noise cancellation cycling, 10-band graphic equalizer, PEQDB import, and Sound Connect parity directly from Android 14+ Quick Settings for Sony WH-1000XM6, XM5, WF-1000XM5, LinkBuds, and ULT WEAR.">
   <link rel="icon" type="image/png" href="assets/logo.png">
   <style>
     :root {
@@ -60,29 +60,29 @@
       position: fixed;
       top: 40%;
       right: -100px;
-      width: 700px;
-      height: 700px;
-      background: radial-gradient(circle, rgba(16, 185, 129, 0.08) 0%, rgba(10,12,16,0) 70%);
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, var(--anc-green-glow) 0%, rgba(10,12,16,0) 70%);
       pointer-events: none;
       z-index: 0;
     }
 
-    /* Container */
     .container {
-      max-width: 1200px;
+      max-width: 1240px;
       margin: 0 auto;
       padding: 0 24px;
       position: relative;
       z-index: 1;
     }
 
-    /* Header & Navigation */
+    /* Navigation */
     header {
-      border-bottom: 1px solid var(--border-color);
-      background: rgba(10, 12, 16, 0.85);
-      backdrop-filter: blur(16px);
       position: sticky;
       top: 0;
+      background: rgba(10, 12, 16, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-color);
       z-index: 100;
     }
 
@@ -90,7 +90,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      height: 76px;
+      height: 72px;
     }
 
     .nav-brand {
@@ -102,24 +102,27 @@
     }
 
     .nav-logo {
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.5), 0 0 16px var(--copper-glow);
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      box-shadow: 0 0 16px var(--copper-glow);
     }
 
     .brand-title {
-      font-size: 1.15rem;
-      font-weight: 700;
+      font-size: 1.25rem;
+      font-weight: 800;
       letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #fff 40%, var(--gold) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
 
     .brand-tag {
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       color: var(--copper);
       font-weight: 600;
-      letter-spacing: 0.05em;
       text-transform: uppercase;
+      letter-spacing: 0.08em;
     }
 
     .nav-links {
@@ -134,7 +137,7 @@
       text-decoration: none;
       font-size: 0.92rem;
       font-weight: 500;
-      transition: color 0.2s;
+      transition: color 0.2s ease;
     }
 
     .nav-link:hover {
@@ -142,20 +145,24 @@
     }
 
     .nav-cta-btn {
-      background: linear-gradient(135deg, var(--copper), var(--copper-dark, #a87344));
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, var(--copper), #b87b47);
       color: #0b0e14;
       font-weight: 700;
-      font-size: 0.88rem;
+      font-size: 0.9rem;
       padding: 10px 20px;
       border-radius: 10px;
       text-decoration: none;
       box-shadow: 0 4px 14px var(--copper-glow);
-      transition: all 0.2s;
+      transition: all 0.25s ease;
     }
 
     .nav-cta-btn:hover {
       background: linear-gradient(135deg, var(--copper-hover), var(--copper));
       transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(212, 155, 106, 0.4);
     }
 
     /* Hero Section */
@@ -168,44 +175,51 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
+      background: rgba(212, 155, 106, 0.12);
+      border: 1px solid rgba(212, 155, 106, 0.35);
+      color: var(--gold);
       padding: 6px 16px;
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 50px;
-      font-size: 0.84rem;
+      border-radius: 30px;
+      font-size: 0.85rem;
       font-weight: 600;
-      color: var(--copper);
       margin-bottom: 24px;
     }
 
     .badge-dot {
       width: 8px;
       height: 8px;
-      background-color: var(--anc-green);
       border-radius: 50%;
+      background: var(--anc-green);
       box-shadow: 0 0 8px var(--anc-green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { transform: scale(1.1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
     }
 
     .hero-title {
-      font-size: 3.5rem;
+      font-size: 3.4rem;
       font-weight: 800;
-      letter-spacing: -0.03em;
       line-height: 1.15;
+      letter-spacing: -0.03em;
       margin-bottom: 20px;
     }
 
     .hero-title span {
-      background: linear-gradient(135deg, #fff 30%, var(--gold) 100%);
+      background: linear-gradient(135deg, #fff 30%, var(--gold) 80%, var(--copper) 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
 
     .hero-subtitle {
-      font-size: 1.25rem;
-      color: var(--text-muted);
       max-width: 780px;
       margin: 0 auto 36px;
-      line-height: 1.6;
+      font-size: 1.15rem;
+      color: var(--text-muted);
+      line-height: 1.7;
     }
 
     .hero-actions {
@@ -214,27 +228,28 @@
       justify-content: center;
       gap: 16px;
       flex-wrap: wrap;
-      margin-bottom: 40px;
+      margin-bottom: 30px;
     }
 
     .btn-primary {
       display: inline-flex;
       align-items: center;
       gap: 10px;
-      background: linear-gradient(135deg, var(--copper), #b87b46);
-      color: #0b0e14;
+      background: linear-gradient(135deg, var(--copper), #b87b47);
+      color: #0a0c10;
       font-weight: 700;
       font-size: 1.05rem;
-      padding: 15px 32px;
-      border-radius: 14px;
+      padding: 14px 28px;
+      border-radius: 12px;
       text-decoration: none;
-      box-shadow: 0 8px 25px var(--copper-glow);
+      box-shadow: 0 6px 24px var(--copper-glow);
       transition: all 0.25s ease;
     }
 
     .btn-primary:hover {
+      background: linear-gradient(135deg, var(--copper-hover), var(--copper));
       transform: translateY(-2px);
-      box-shadow: 0 12px 30px rgba(212, 155, 106, 0.4);
+      box-shadow: 0 8px 30px rgba(212, 155, 106, 0.45);
     }
 
     .btn-secondary {
@@ -242,14 +257,14 @@
       align-items: center;
       gap: 10px;
       background: var(--bg-card);
-      border: 1px solid var(--border-color);
       color: var(--text-white);
+      border: 1px solid var(--border-color);
       font-weight: 600;
       font-size: 1.05rem;
-      padding: 15px 28px;
-      border-radius: 14px;
+      padding: 14px 26px;
+      border-radius: 12px;
       text-decoration: none;
-      transition: all 0.2s ease;
+      transition: all 0.25s ease;
     }
 
     .btn-secondary:hover {
@@ -258,58 +273,83 @@
       transform: translateY(-2px);
     }
 
-    /* Verification Strip */
     .checksum-box {
       display: inline-flex;
       align-items: center;
       gap: 12px;
-      background: rgba(19, 22, 32, 0.8);
+      background: #0d1017;
       border: 1px solid var(--border-color);
-      padding: 10px 20px;
-      border-radius: 12px;
+      border-radius: 10px;
+      padding: 10px 18px;
       font-family: var(--font-mono);
-      font-size: 0.82rem;
-      color: var(--text-muted);
+      font-size: 0.8rem;
+      color: var(--text-dim);
       margin-bottom: 50px;
       cursor: pointer;
-      transition: all 0.2s;
+      user-select: all;
+      transition: border-color 0.2s ease;
     }
 
     .checksum-box:hover {
       border-color: var(--copper);
-      color: var(--text-white);
     }
 
     .copy-icon-btn {
-      background: none;
-      border: none;
       color: var(--copper);
-      cursor: pointer;
-      font-size: 0.85rem;
       font-weight: 600;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
     }
 
-    /* Hero Banner Image */
+    /* Hero Visual Banner */
     .hero-banner-wrap {
-      margin: 10px auto 70px;
-      border-radius: 24px;
+      max-width: 1080px;
+      margin: 0 auto;
+      border-radius: 20px;
       overflow: hidden;
       border: 1px solid var(--border-color);
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
-      background: #000;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 40px var(--copper-glow);
     }
 
     .hero-banner-img {
       width: 100%;
       height: auto;
       display: block;
-      transition: transform 0.3s ease;
     }
 
-    /* Interactive Live Demo Card */
+    /* Live Wave Banner */
+    .live-wave-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 24px;
+      padding: 12px;
+      background: rgba(19, 22, 32, 0.6);
+      border-radius: 14px;
+      border: 1px solid var(--border-color);
+    }
+
+    .wave-bar {
+      width: 4px;
+      height: 18px;
+      background: var(--copper);
+      border-radius: 4px;
+      animation: wavePulse 1.2s ease-in-out infinite alternate;
+    }
+
+    .wave-bar:nth-child(1) { animation-delay: 0.0s; height: 12px; }
+    .wave-bar:nth-child(2) { animation-delay: 0.2s; height: 24px; }
+    .wave-bar:nth-child(3) { animation-delay: 0.4s; height: 16px; }
+    .wave-bar:nth-child(4) { animation-delay: 0.1s; height: 28px; }
+    .wave-bar:nth-child(5) { animation-delay: 0.3s; height: 20px; }
+    .wave-bar:nth-child(6) { animation-delay: 0.5s; height: 14px; }
+    .wave-bar:nth-child(7) { animation-delay: 0.2s; height: 22px; }
+
+    @keyframes wavePulse {
+      0% { transform: scaleY(0.4); opacity: 0.6; }
+      100% { transform: scaleY(1.3); opacity: 1; }
+    }
+
+    /* Section Styling */
     .section-title {
       font-size: 2.2rem;
       font-weight: 800;
@@ -321,82 +361,83 @@
     .section-subtitle {
       text-align: center;
       color: var(--text-muted);
-      max-width: 650px;
-      margin: 0 auto 50px;
       font-size: 1.05rem;
+      max-width: 680px;
+      margin: 0 auto 48px;
     }
 
+    /* Interactive Simulator */
     .interactive-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 32px;
+      grid-template-columns: 1fr 1.35fr;
+      gap: 28px;
       margin-bottom: 80px;
     }
 
     .interactive-card {
       background: var(--bg-card);
       border: 1px solid var(--border-color);
-      border-radius: 24px;
-      padding: 36px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+      border-radius: 20px;
+      padding: 30px;
       display: flex;
       flex-direction: column;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
     }
 
     .card-heading {
-      font-size: 1.3rem;
-      font-weight: 700;
-      margin-bottom: 8px;
       display: flex;
       align-items: center;
-      gap: 10px;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-white);
     }
 
     .card-desc {
       color: var(--text-muted);
-      font-size: 0.92rem;
-      margin-bottom: 28px;
+      font-size: 0.88rem;
+      margin-bottom: 24px;
     }
 
-    /* Interactive Tile Component */
+    /* QS Tile Mockup */
     .qs-tile-preview-box {
-      background: #0b0d13;
+      background: #090b10;
       border: 1px solid var(--border-color);
-      border-radius: 20px;
+      border-radius: 16px;
       padding: 24px;
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: center;
+      min-height: 200px;
       margin-bottom: 20px;
     }
 
     .simulated-tile {
-      width: 100%;
-      max-width: 320px;
-      height: 90px;
-      border-radius: 24px;
       display: flex;
       align-items: center;
-      padding: 0 24px;
-      gap: 18px;
+      gap: 16px;
+      padding: 16px 24px;
+      border-radius: 24px;
       cursor: pointer;
       user-select: none;
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      width: 100%;
+      max-width: 300px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
     }
 
     .simulated-tile.mode-nc {
       background: var(--anc-green);
-      color: #032014;
-      border: 2px solid #a7f3d0;
-      box-shadow: 0 0 25px var(--anc-green-glow);
+      color: #032115;
+      box-shadow: 0 8px 25px var(--anc-green-glow);
     }
 
     .simulated-tile.mode-ambient {
       background: var(--ambient-blue);
-      color: #031c2e;
-      border: 2px solid #bae6fd;
-      box-shadow: 0 0 25px var(--ambient-blue-glow);
+      color: #042436;
+      box-shadow: 0 8px 25px var(--ambient-blue-glow);
     }
 
     .simulated-tile.mode-off {
@@ -440,9 +481,9 @@
       background: #07080c;
       border: 1px solid var(--border-color);
       border-radius: 14px;
-      padding: 16px;
+      padding: 14px 18px;
       font-family: var(--font-mono);
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       color: var(--gold);
       overflow-x: auto;
       margin-top: auto;
@@ -456,74 +497,127 @@
       margin-bottom: 6px;
     }
 
-    /* Ambient Slider Simulator */
-    .slider-control-group {
-      margin-bottom: 24px;
+    /* Spline Canvas Box */
+    .spline-canvas-container {
+      background: #0b0e15;
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 12px;
+      margin-bottom: 16px;
+      position: relative;
     }
 
-    .slider-header-flex {
+    .spline-svg {
+      width: 100%;
+      height: 180px;
+      display: block;
+    }
+
+    /* Target Curve Chips */
+    .chips-row {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 18px;
     }
 
-    .slider-val-display {
-      font-size: 1.4rem;
-      font-weight: 800;
+    .chip-btn {
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .chip-btn:hover {
+      border-color: var(--copper);
+      color: var(--text-white);
+    }
+
+    .chip-btn.active {
+      background: rgba(212, 155, 106, 0.2);
+      border-color: var(--copper);
       color: var(--gold);
     }
 
-    .slider-preset-tag {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      background: var(--bg-input);
-      padding: 4px 12px;
-      border-radius: 20px;
+    /* 10-Band Sliders Grid */
+    .ten-band-grid {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 6px;
+      margin-bottom: 16px;
+      background: #090b10;
+      padding: 12px 6px;
+      border-radius: 14px;
+      border: 1px solid var(--border-color);
     }
 
-    input[type=range] {
-      width: 100%;
-      height: 10px;
-      background: var(--bg-input);
-      border-radius: 10px;
-      outline: none;
-      -webkit-appearance: none;
-      appearance: none;
+    .band-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
     }
 
-    input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      background: var(--copper);
+    .band-gain-lbl {
+      font-size: 0.68rem;
+      font-family: var(--font-mono);
+      color: var(--gold);
+      font-weight: 700;
+      min-height: 14px;
+    }
+
+    .band-slider-v {
+      -webkit-appearance: slider-vertical;
+      writing-mode: bt-lr;
+      width: 18px;
+      height: 110px;
+      background: transparent;
       cursor: pointer;
-      box-shadow: 0 0 10px var(--copper-glow);
-      border: 2px solid #fff;
+    }
+
+    .band-freq-lbl {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .cb-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #0e121a;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 10px 16px;
+      margin-bottom: 14px;
     }
 
     .toggle-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 14px 18px;
+      padding: 10px 16px;
       background: #0b0d13;
       border: 1px solid var(--border-color);
-      border-radius: 14px;
-      margin-bottom: 12px;
+      border-radius: 12px;
+      margin-bottom: 10px;
     }
 
     .toggle-label {
-      font-size: 0.92rem;
+      font-size: 0.88rem;
       font-weight: 600;
     }
 
     .switch-ui {
       position: relative;
       display: inline-block;
-      width: 48px;
-      height: 26px;
+      width: 44px;
+      height: 24px;
     }
 
     .switch-ui input {
@@ -538,14 +632,14 @@
       top: 0; left: 0; right: 0; bottom: 0;
       background-color: #272f42;
       transition: .3s;
-      border-radius: 26px;
+      border-radius: 24px;
     }
 
     .slider-round:before {
       position: absolute;
       content: "";
-      height: 20px;
-      width: 20px;
+      height: 18px;
+      width: 18px;
       left: 3px;
       bottom: 3px;
       background-color: white;
@@ -558,7 +652,7 @@
     }
 
     input:checked + .slider-round:before {
-      transform: translateX(22px);
+      transform: translateX(20px);
     }
 
     /* Screenshots Showcase Grid */
@@ -568,70 +662,74 @@
 
     .screenshots-showcase-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 28px;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 24px;
     }
 
     .screenshot-card {
       background: var(--bg-card);
       border: 1px solid var(--border-color);
-      border-radius: 20px;
+      border-radius: 18px;
       overflow: hidden;
-      transition: transform 0.25s ease, border-color 0.25s ease;
       display: flex;
       flex-direction: column;
+      transition: all 0.3s ease;
     }
 
     .screenshot-card:hover {
-      transform: translateY(-6px);
       border-color: var(--copper);
-      box-shadow: 0 16px 36px rgba(0,0,0,0.6);
+      transform: translateY(-4px);
+      box-shadow: 0 12px 30px rgba(0,0,0,0.5);
     }
 
     .screenshot-img-box {
       width: 100%;
-      background: #000;
+      background: #07080c;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
       overflow: hidden;
-      position: relative;
     }
 
     .screenshot-img-box img {
       width: 100%;
       height: auto;
       display: block;
-      transition: transform 0.3s;
+      transition: transform 0.4s ease;
+    }
+
+    .screenshot-card:hover .screenshot-img-box img {
+      transform: scale(1.02);
     }
 
     .screenshot-info {
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-      flex-grow: 1;
+      padding: 20px;
     }
 
     .screenshot-title {
-      font-size: 1.15rem;
+      font-size: 1.1rem;
       font-weight: 700;
+      color: var(--text-white);
       margin-bottom: 8px;
     }
 
     .screenshot-desc {
-      font-size: 0.88rem;
       color: var(--text-muted);
+      font-size: 0.85rem;
       line-height: 1.5;
     }
 
-    /* Feature Comparison Table */
+    /* Comparison Table */
     .comparison-section {
-      padding: 60px 0 80px;
+      padding: 40px 0 80px;
     }
 
     .table-container {
-      background: var(--bg-card);
+      overflow-x: auto;
       border: 1px solid var(--border-color);
-      border-radius: 20px;
-      overflow: hidden;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+      border-radius: 16px;
+      background: var(--bg-card);
     }
 
     table {
@@ -640,96 +738,72 @@
       text-align: left;
     }
 
-    th {
-      background: #0e111a;
-      padding: 20px 24px;
-      font-size: 0.95rem;
-      font-weight: 700;
-      color: var(--text-white);
-      border-bottom: 2px solid var(--border-color);
-    }
-
-    th.highlight-col {
-      color: var(--gold);
-      background: rgba(212, 155, 106, 0.08);
-      border-bottom: 2px solid var(--copper);
-    }
-
-    td {
-      padding: 18px 24px;
+    th, td {
+      padding: 16px 20px;
       border-bottom: 1px solid var(--border-color);
       font-size: 0.92rem;
-      color: var(--text-muted);
+    }
+
+    th {
+      background: #0e111a;
+      color: var(--text-white);
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 0.78rem;
+      letter-spacing: 0.05em;
     }
 
     tr:last-child td {
       border-bottom: none;
     }
 
-    td.highlight-col {
-      background: rgba(212, 155, 106, 0.04);
-      color: var(--text-white);
+    .highlight-col {
+      background: rgba(212, 155, 106, 0.07);
+      color: var(--gold);
       font-weight: 600;
     }
 
     .tag-check {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
       color: var(--anc-green);
-      font-weight: 600;
+      font-weight: 700;
     }
 
     .tag-cross {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      color: #f87171;
+      color: #ef4444;
+      font-weight: 600;
     }
 
-    /* Protocol Architecture Section */
+    /* Protocol Section */
     .protocol-section {
-      padding: 60px 0 80px;
+      padding: 40px 0 80px;
     }
 
     .protocol-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 32px;
+      gap: 24px;
     }
 
     .code-block-card {
-      background: #08090d;
+      background: #080a0f;
       border: 1px solid var(--border-color);
-      border-radius: 18px;
+      border-radius: 16px;
       padding: 24px;
       font-family: var(--font-mono);
-      font-size: 0.85rem;
-      color: #e2e8f0;
+      font-size: 0.82rem;
+      line-height: 1.6;
+      color: #cbd5e1;
       overflow-x: auto;
-      line-height: 1.7;
     }
 
-    .code-comment {
-      color: #64748b;
-    }
+    .code-comment { color: var(--text-dim); }
+    .code-hex { color: var(--gold); }
+    .code-keyword { color: var(--copper); }
+    .code-var { color: var(--ambient-blue); }
 
-    .code-keyword {
-      color: #f472b6;
-    }
-
-    .code-hex {
-      color: var(--gold);
-      font-weight: 600;
-    }
-
-    .code-var {
-      color: #38bdf8;
-    }
-
-    /* Steps Section */
+    /* Setup Steps */
     .steps-section {
-      padding: 60px 0 80px;
+      padding: 40px 0 80px;
     }
 
     .steps-grid {
@@ -741,29 +815,28 @@
     .step-card {
       background: var(--bg-card);
       border: 1px solid var(--border-color);
-      border-radius: 18px;
+      border-radius: 16px;
       padding: 28px;
       position: relative;
     }
 
     .step-num {
-      width: 38px;
-      height: 38px;
-      border-radius: 12px;
-      background: linear-gradient(135deg, var(--copper), #8a5829);
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--copper);
       color: #0b0e14;
       font-weight: 800;
-      font-size: 1.1rem;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 20px;
+      margin-bottom: 18px;
     }
 
     .step-title {
       font-size: 1.15rem;
       font-weight: 700;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
 
     .step-text {
@@ -775,22 +848,18 @@
     /* Footer */
     footer {
       border-top: 1px solid var(--border-color);
-      padding: 60px 0 40px;
-      background: #08090d;
-      margin-top: 80px;
+      background: #07090d;
+      padding: 40px 0;
+      color: var(--text-dim);
+      font-size: 0.85rem;
     }
 
     .footer-content {
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      justify-content: space-between;
       flex-wrap: wrap;
-      gap: 24px;
-    }
-
-    .footer-text {
-      color: var(--text-dim);
-      font-size: 0.88rem;
+      gap: 20px;
     }
 
     .footer-links {
@@ -802,8 +871,7 @@
     .footer-link {
       color: var(--text-muted);
       text-decoration: none;
-      font-size: 0.9rem;
-      transition: color 0.2s;
+      transition: color 0.2s ease;
     }
 
     .footer-link:hover {
@@ -812,9 +880,8 @@
 
     /* Responsive */
     @media (max-width: 992px) {
-      .hero-title { font-size: 2.6rem; }
+      .hero-title { font-size: 2.5rem; }
       .interactive-grid { grid-template-columns: 1fr; }
-      .screenshots-showcase-grid { grid-template-columns: 1fr; }
       .protocol-grid { grid-template-columns: 1fr; }
       .steps-grid { grid-template-columns: 1fr; }
       .nav-links { display: none; }
@@ -826,25 +893,25 @@
   <div class="ambient-glow-1"></div>
   <div class="ambient-glow-2"></div>
 
-  <!-- Navigation -->
+  <!-- Navigation Bar -->
   <header>
     <div class="container nav-content">
       <a href="#" class="nav-brand">
-        <img src="assets/logo.png" alt="Sony XM6 Noise Control Logo" class="nav-logo">
+        <img src="assets/logo.png" alt="Sony Audio Tiles Logo" class="nav-logo">
         <div>
-          <div class="brand-title">Sony XM6 Tiles</div>
-          <div class="brand-tag">Noise Control Tile Hub</div>
+          <div class="brand-title">Sony Audio Tiles</div>
+          <div class="brand-tag">Quick Settings & PEQ Studio</div>
         </div>
       </a>
       <ul class="nav-links">
-        <li><a href="#demo" class="nav-link">Interactive Demo</a></li>
+        <li><a href="#demo" class="nav-link">Interactive Studio</a></li>
         <li><a href="#screenshots" class="nav-link">Screenshots</a></li>
         <li><a href="#comparison" class="nav-link">Comparison</a></li>
         <li><a href="#protocol" class="nav-link">MDR Protocol</a></li>
         <li><a href="#setup" class="nav-link">Quick Setup</a></li>
       </ul>
-      <a href="https://github.com/karkarbinksjar-hash/Sony-XM6-Tiles/releases/download/v1.0.3/Sony-XM6-NoiseControl-v1.0.3.apk" class="nav-cta-btn">
-        Download APK v1.0.3
+      <a href="https://github.com/TheSwagInDisguise/Sony-Audio-Tiles/releases/download/v1.1.0/Sony-Audio-Tiles-v1.1.0.apk" class="nav-cta-btn">
+        Download APK v1.1.0
       </a>
     </div>
   </header>
@@ -854,27 +921,27 @@
     <div class="container">
       <div class="badge-release">
         <span class="badge-dot"></span>
-        v1.0.3 Universal Release • Full Sony Ecosystem & Sound Connect Parity
+        v1.1.0 Universal Release • 10-Band EQ & PEQ Studio • Full Sony Ecosystem
       </div>
       <h1 class="hero-title">
-        Universal Noise Control & EQ for<br>
+        Universal Noise Control & EQ Studio for<br>
         <span>Sony Headphones & Earbuds</span>
       </h1>
       <p class="hero-subtitle">
         A lightweight, open-source Android Quick Settings Tile & Sound Connect Hub for <strong>Sony WH-1000XM6, XM5, XM4, WF-1000XM5, LinkBuds, and ULT WEAR</strong>.
-        Sub-50ms RFCOMM switching, 5-band graphic equalizer, Speak-to-Chat, TWS multi-battery telemetry, and ColorOS background safeguards.
+        Sub-50ms RFCOMM switching, 10-Band ISO Graphic Equalizer, AutoEq & PEQDB import, interactive spline visualizer, Speak-to-Chat, and ColorOS background safeguards.
       </p>
 
       <div class="hero-actions">
-        <a href="https://github.com/karkarbinksjar-hash/Sony-XM6-Tiles/releases/download/v1.0.3/Sony-XM6-NoiseControl-v1.0.3.apk" class="btn-primary">
+        <a href="https://github.com/TheSwagInDisguise/Sony-Audio-Tiles/releases/download/v1.1.0/Sony-Audio-Tiles-v1.1.0.apk" class="btn-primary">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="7 10 12 15 17 10"></polyline>
             <line x1="12" y1="15" x2="12" y2="3"></line>
           </svg>
-          Download Signed APK (v1.0.3)
+          Download Signed APK (v1.1.0)
         </a>
-        <a href="https://github.com/karkarbinksjar-hash/Sony-XM6-Tiles" class="btn-secondary" target="_blank" rel="noopener noreferrer">
+        <a href="https://github.com/TheSwagInDisguise/Sony-Audio-Tiles" class="btn-secondary" target="_blank" rel="noopener noreferrer">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
             <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"></path>
           </svg>
@@ -882,30 +949,34 @@
         </a>
       </div>
 
-      <!-- SHA256 Box -->
-      <div>
-        <div class="checksum-box" id="checksumCopyBtn" title="Click to copy SHA-256">
-          <span>SHA-256:</span>
-          <span style="color: #cbd5e1;">c2d2e530cc56df0b7e0fe2fee307df6cccb9f005f51244c0a2d85a2318c32f3f</span>
-          <span class="copy-icon-btn" id="copyLabel">[Copy]</span>
-        </div>
+      <!-- Live Vitality Wave -->
+      <div class="live-wave-bar">
+        <span style="font-size: 0.8rem; font-weight: 700; color: var(--gold); margin-right: 8px;">LIVE MDR LINK:</span>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <span style="font-size: 0.8rem; color: var(--anc-green); font-weight: 600; margin-left: 8px;">RFCOMM Synchronized</span>
       </div>
 
       <!-- Hero Visual Banner -->
-      <div class="hero-banner-wrap">
-        <img src="assets/hero-banner.png" alt="Sony XM6 Quick Settings Controller Showcase Banner" class="hero-banner-img">
+      <div class="hero-banner-wrap" style="margin-top: 30px;">
+        <img src="assets/hero-banner.png" alt="Sony Audio Tiles Controller Showcase Banner" class="hero-banner-img">
       </div>
     </div>
   </section>
 
   <!-- Interactive Live Simulator Section -->
   <section id="demo" class="container">
-    <h2 class="section-title">Interactive Protocol Simulator</h2>
+    <h2 class="section-title">Interactive Quick Settings & PEQ Studio</h2>
     <p class="section-subtitle">
-      Test how the Quick Settings Tile, Sony MDR v2 protocol frames, and 5-band Graphic Equalizer operate directly in your browser.
+      Test how the Quick Settings Tile, 10-Band Graphic Equalizer, spline curve visualizer, and Sony MDR v2 protocol frames interact in real-time.
     </p>
 
-    <!-- Compatibility Pills -->
+    <!-- Compatibility Badges -->
     <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 36px;">
       <span style="background: rgba(212, 155, 106, 0.15); border: 1px solid var(--copper); color: var(--gold); padding: 4px 14px; border-radius: 20px; font-size: 0.82rem; font-weight: 600;">WH-1000XM6 / XM5 / XM4 / XM3</span>
       <span style="background: rgba(16, 185, 129, 0.15); border: 1px solid var(--anc-green); color: var(--anc-green); padding: 4px 14px; border-radius: 20px; font-size: 0.82rem; font-weight: 600;">WF-1000XM5 / WF-1000XM4 (TWS)</span>
@@ -931,42 +1002,11 @@
               <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path>
             </svg>
             <div class="tile-text-wrap">
-              <span class="tile-main-label" id="tileLabel">XM6: NC On</span>
+              <span class="tile-main-label" id="tileLabel">Sony: NC On</span>
               <span class="tile-sub-label" id="tileSub">Noise Cancelling Active</span>
             </div>
           </div>
           <div class="tile-tap-instruction">👆 Click anywhere on the tile to cycle state</div>
-        </div>
-
-        <div class="protocol-packet-inspector">
-          <div class="packet-label">Active RFCOMM Escaped MDR Frame</div>
-          <div id="tilePacketDisplay">3E 0C 00 00 00 00 08 68 17 01 01 00 02 00 01 83 3C</div>
-        </div>
-      </div>
-
-      <!-- 2. 5-Band Equalizer & Clear Bass Simulator -->
-      <div class="interactive-card">
-        <div class="card-heading">
-          <span>🎚️ 5-Band Graphic Equalizer & Clear Bass</span>
-        </div>
-        <p class="card-desc">
-          Adjust Sony's hardware DSP curves in real time. Features Clear Bass and five discrete EQ bands (-10 to +10 dB).
-        </p>
-
-        <div class="slider-control-group">
-          <div class="slider-header-flex">
-            <span>Clear Bass Sub-Woofer</span>
-            <span class="slider-val-display" id="cbValDisplay">+5 dB</span>
-          </div>
-          <input type="range" id="cbSlider" min="-10" max="10" value="5">
-        </div>
-
-        <div class="slider-control-group">
-          <div class="slider-header-flex">
-            <span>1.0 kHz Mid Vocal Band</span>
-            <span class="slider-val-display" id="midValDisplay">+2 dB</span>
-          </div>
-          <input type="range" id="midSlider" min="-10" max="10" value="2">
         </div>
 
         <div class="toggle-row">
@@ -986,8 +1026,67 @@
         </div>
 
         <div class="protocol-packet-inspector">
-          <div class="packet-label">Generated Equalizer Set Packet (Opcode 0x58)</div>
-          <div id="eqPacketDisplay">0x58 (SET_EQ), 0x00, Preset=0xA0 (Custom), Bands=0x06, CB=15, 10, 12, 10, 10, 10</div>
+          <div class="packet-label">Active RFCOMM Escaped MDR Frame</div>
+          <div id="tilePacketDisplay">3E 0C 00 00 00 00 08 68 17 01 01 00 02 00 01 83 3C</div>
+        </div>
+      </div>
+
+      <!-- 2. 10-Band Graphic Equalizer & PEQ Studio -->
+      <div class="interactive-card">
+        <div class="card-heading">
+          <span>🎚️ 10-Band EQ & Spline Visualizer</span>
+        </div>
+        <p class="card-desc">
+          Drag sliders or select target curves. The continuous spline curve and Sony hardware DSP parameters update live.
+        </p>
+
+        <!-- Spline Canvas -->
+        <div class="spline-canvas-container">
+          <svg class="spline-svg" id="splineSvg" viewBox="0 0 500 180">
+            <defs>
+              <linearGradient id="curveGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#d49b6a" stop-opacity="0.45"/>
+                <stop offset="100%" stop-color="#d49b6a" stop-opacity="0.0"/>
+              </linearGradient>
+            </defs>
+            <!-- Grid Lines -->
+            <line x1="20" y1="30" x2="480" y2="30" stroke="#1f2536" stroke-width="1"/>
+            <line x1="20" y1="90" x2="480" y2="90" stroke="#37415a" stroke-width="1.5"/>
+            <line x1="20" y1="150" x2="480" y2="150" stroke="#1f2536" stroke-width="1"/>
+            <text x="25" y="26" fill="#64748b" font-size="10">+12 dB</text>
+            <text x="25" y="86" fill="#94a3b8" font-size="10">0 dB</text>
+            <text x="25" y="146" fill="#64748b" font-size="10">-12 dB</text>
+            <!-- Spline Fill and Line -->
+            <path id="splineFillPath" fill="url(#curveGradient)" d=""></path>
+            <path id="splineLinePath" fill="none" stroke="#d49b6a" stroke-width="3" stroke-linecap="round"></path>
+          </svg>
+        </div>
+
+        <!-- Target Presets Chips -->
+        <div class="chips-row">
+          <button class="chip-btn active" data-preset="harman2020">Harman 2020</button>
+          <button class="chip-btn" data-preset="harman2019">Harman 2019</button>
+          <button class="chip-btn" data-preset="oratory">Oratory1990</button>
+          <button class="chip-btn" data-preset="basshead">Basshead 808</button>
+          <button class="chip-btn" data-preset="vocal">Vocal Clarity</button>
+          <button class="chip-btn" data-preset="flat">Flat</button>
+        </div>
+
+        <!-- 10 ISO Band Sliders -->
+        <div class="ten-band-grid" id="bandSlidersContainer">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- Clear Bass Row -->
+        <div class="cb-row">
+          <span style="font-size: 0.85rem; font-weight: 700;">Sony Clear Bass Sub-Frequency:</span>
+          <span id="cbValDisplay" style="color: var(--gold); font-weight: 800; font-size: 1.05rem;">+5</span>
+          <input type="range" id="cbSlider" min="-10" max="10" value="5" style="width: 140px;">
+        </div>
+
+        <div class="protocol-packet-inspector">
+          <div class="packet-label">Sony Hardware DSP Fit (Opcode 0x58)</div>
+          <div id="eqPacketDisplay">0x58 (SET_EQ) | CB: 15 (+5) | 400Hz: 10 | 1kHz: 12 | 2.5kHz: 14 | 6.3kHz: 12 | 16kHz: 9</div>
         </div>
       </div>
     </div>
@@ -995,9 +1094,9 @@
 
   <!-- Screenshots Showcase -->
   <section id="screenshots" class="screenshots-section container">
-    <h2 class="section-title">Visual Tour & Screenshots</h2>
+    <h2 class="section-title">Visual Tour & UI Showcase</h2>
     <p class="section-subtitle">
-      Designed with an obsidian black and metallic copper aesthetic matching the XM6's luxury acoustic design.
+      Obsidian black and metallic copper aesthetic matching Sony flagship acoustic design, optimized for Android 14+ and ColorOS.
     </p>
 
     <div class="screenshots-showcase-grid">
@@ -1017,12 +1116,12 @@
       <!-- Card 2 -->
       <div class="screenshot-card">
         <div class="screenshot-img-box">
-          <img src="assets/screenshot-dashboard.png" alt="Jetpack Compose Main Hub Dashboard">
+          <img src="assets/screenshot-peq-visualizer.png" alt="10-Band EQ & PEQ Studio Visualizer">
         </div>
         <div class="screenshot-info">
-          <h3 class="screenshot-title">2. Controller Hub Dashboard</h3>
+          <h3 class="screenshot-title">2. 10-Band EQ & PEQ Studio</h3>
           <p class="screenshot-desc">
-            Companion hub for device pairing, battery percentage telemetry (0x22 / 0x23), ambient sound tuning, and ColorOS battery exemption setup.
+            Continuous parametric Bezier curve visualizer, 10 ISO band sliders, AutoEq/.peqdb import, Harman & Oratory presets, and Sony DSP downsampling.
           </p>
         </div>
       </div>
@@ -1030,10 +1129,23 @@
       <!-- Card 3 -->
       <div class="screenshot-card">
         <div class="screenshot-img-box">
+          <img src="assets/screenshot-dashboard.png" alt="Jetpack Compose Main Hub Dashboard">
+        </div>
+        <div class="screenshot-info">
+          <h3 class="screenshot-title">3. Controller Hub Dashboard</h3>
+          <p class="screenshot-desc">
+            Companion hub for device pairing, battery percentage telemetry (0x22 / 0x23), ambient sound tuning, and ColorOS battery exemption setup.
+          </p>
+        </div>
+      </div>
+
+      <!-- Card 4 -->
+      <div class="screenshot-card">
+        <div class="screenshot-img-box">
           <img src="assets/screenshot-cycling.png" alt="Quick Settings Tile Cycling Behavior">
         </div>
         <div class="screenshot-info">
-          <h3 class="screenshot-title">3. 3-Way Mode Cycling</h3>
+          <h3 class="screenshot-title">4. 3-Way Mode Cycling</h3>
           <p class="screenshot-desc">
             Deterministic state cycle: NC On ➔ Ambient Sound ➔ Off ➔ NC On. Also supports configurable 2-way cycles (NC ⇄ Ambient or NC ⇄ Off).
           </p>
@@ -1044,9 +1156,9 @@
 
   <!-- Comparison Table -->
   <section id="comparison" class="comparison-section container">
-    <h2 class="section-title">Why Use This Instead of Sony Sound Connect?</h2>
+    <h2 class="section-title">Why Use Sony Audio Tiles?</h2>
     <p class="section-subtitle">
-      No accounts, no cloud dependencies, and no 5-second splash screens just to toggle noise cancellation.
+      Zero accounts, zero analytics, and sub-50ms toggle response directly from your system notification shade.
     </p>
 
     <div class="table-container">
@@ -1054,7 +1166,7 @@
         <thead>
           <tr>
             <th>Feature</th>
-            <th class="highlight-col">Sony XM6 Tiles (This App)</th>
+            <th class="highlight-col">Sony Audio Tiles (This App)</th>
             <th>Official Sony Sound Connect</th>
           </tr>
         </thead>
@@ -1063,6 +1175,16 @@
             <td><strong>Quick Settings Tile</strong></td>
             <td class="highlight-col"><span class="tag-check">✓ Native Android 14+ Tile</span></td>
             <td><span class="tag-cross">✗ Not Supported</span></td>
+          </tr>
+          <tr>
+            <td><strong>Equalizer Resolution</strong></td>
+            <td class="highlight-col"><span class="tag-check">✓ 10-Band ISO + PEQ Import (.peqdb, AutoEq)</span></td>
+            <td><span class="tag-cross">✗ Limited 5-Band Only</span></td>
+          </tr>
+          <tr>
+            <td><strong>Parametric Curve Spline</strong></td>
+            <td class="highlight-col"><span class="tag-check">✓ Real-time Biquad Spline Visualizer</span></td>
+            <td><span class="tag-cross">✗ Static Bar Sliders Only</span></td>
           </tr>
           <tr>
             <td><strong>Toggle Latency</strong></td>
@@ -1082,7 +1204,7 @@
           <tr>
             <td><strong>Battery Impact</strong></td>
             <td class="highlight-col"><span class="tag-check">✓ 120s Smart Idle Sleep & ACL hooks</span></td>
-            <td><span class="tag-cross">✗ Persistent location & background polling</span></td>
+            <td><span class="tag-cross">✗ Persistent background socket polling</span></td>
           </tr>
           <tr>
             <td><strong>ColorOS / Oppo Optimization</strong></td>
@@ -1113,24 +1235,28 @@
         <br><span class="code-keyword">Escape Byte:</span>   <span class="code-hex">0x3D</span> (Mask: <span class="code-hex">0xEF</span>)
         <br><span class="code-keyword">Trailer Byte:</span>  <span class="code-hex">0x3C</span>
         <br>
-        <br><span class="code-comment">// Pre-escaped Frame Layout:</span>
-        <br>[<span class="code-var">Type: 1B</span>] [<span class="code-var">Seq: 1B</span>] [<span class="code-var">Length: 4B Big-Endian</span>] [<span class="code-var">Payload</span>] [<span class="code-var">Checksum: 1B</span>]
+        <br><span class="code-comment">// Escaped Frame Structure:</span>
+        <br>[<span class="code-var">Type: 1B</span>] [<span class="code-var">Seq: 1B</span>] [<span class="code-var">Length: 4B BE</span>] [<span class="code-var">Payload</span>] [<span class="code-var">Checksum: 1B</span>]
         <br>
-        <br><span class="code-comment">// Checksum Formula:</span>
-        <br><span class="code-keyword">val</span> checksum = (type + seq + (len&gt;&gt;24)&amp;0xFF + (len&gt;&gt;16)&amp;0xFF +
-        <br>                (len&gt;&gt;8)&amp;0xFF + (len&amp;0xFF) + payload.sumOf { it.toInt() }) &amp; <span class="code-hex">0xFF</span>
+        <br><span class="code-comment">// 10-Band EQ to Sony Hardware Fitting:</span>
+        <br><span class="code-keyword">val</span> clearBass = ((gains[31Hz] * 0.7f + gains[63Hz] * 0.3f) * 1.2f).toInt()
+        <br><span class="code-keyword">val</span> b400 = ((gains[250Hz] + gains[500Hz]) / 2.0f).toInt()
+        <br><span class="code-keyword">val</span> b1k  = gains[1000Hz].toInt()
+        <br><span class="code-keyword">val</span> b2k5 = gains[2000Hz].toInt()
+        <br><span class="code-keyword">val</span> b6k3 = ((gains[4000Hz] + gains[8000Hz]) / 2.0f).toInt()
+        <br><span class="code-keyword">val</span> b16k = gains[16000Hz].toInt()
       </div>
 
       <div class="code-block-card">
-        <span class="code-comment">// 2. Noise Control Command Payloads (Subtype 0x17)</span>
-        <br><span class="code-comment">// Noise Cancelling ON:</span>
+        <span class="code-comment">// 2. Command Payloads (Noise Control & Equalizer)</span>
+        <br><span class="code-comment">// Noise Cancelling ON (Subtype 0x17):</span>
         <br>[<span class="code-hex">0x68</span>, <span class="code-hex">0x17</span>, <span class="code-hex">0x01</span>, <span class="code-var">On=0x01</span>, <span class="code-var">Amb=0x00</span>, <span class="code-var">Wind=0x02</span>, <span class="code-var">Voice=0x00</span>, <span class="code-hex">0x01</span>]
         <br>
-        <br><span class="code-comment">// Ambient Sound ON (Level 20):</span>
-        <br>[<span class="code-hex">0x68</span>, <span class="code-hex">0x17</span>, <span class="code-hex">0x01</span>, <span class="code-var">On=0x01</span>, <span class="code-var">Amb=0x01</span>, <span class="code-var">Wind=0x00</span>, <span class="code-var">Voice=0x00</span>, <span class="code-hex">0x14</span>]
+        <br><span class="code-comment">// Hardware Custom EQ Set (Opcode 0x58):</span>
+        <br>[<span class="code-hex">0x58</span>, <span class="code-hex">0x00</span>, <span class="code-hex">0xA0</span>, <span class="code-hex">0x06</span>, <span class="code-var">cb+10</span>, <span class="code-var">b400+10</span>, <span class="code-var">b1k+10</span>, <span class="code-var">b2k5+10</span>, <span class="code-var">b6k3+10</span>, <span class="code-var">b16k+10</span>]
         <br>
-        <br><span class="code-comment">// Battery Telemetry Query:</span>
-        <br>[<span class="code-hex">0x22</span>, <span class="code-hex">0x00</span>] ➔ Returns [<span class="code-hex">0x23</span>, <span class="code-hex">0x00</span>, <span class="code-var">Level%</span>, <span class="code-var">IsChargingBool</span>]
+        <br><span class="code-comment">// TWS Battery Telemetry Query:</span>
+        <br>[<span class="code-hex">0x22</span>, <span class="code-hex">0x00</span>] ➔ Returns Left %, Right %, Case % & Charging bits
       </div>
     </div>
   </section>
@@ -1147,7 +1273,7 @@
         <div class="step-num">1</div>
         <h3 class="step-title">Install Signed APK</h3>
         <p class="step-text">
-          Download and install <code>Sony-XM6-NoiseControl-v1.0.3.apk</code>. All builds are signed with a verified persistent keystore.
+          Download and install <code>Sony-Audio-Tiles-v1.1.0.apk</code>. All builds are signed with our persistent production keystore.
         </p>
       </div>
 
@@ -1155,15 +1281,15 @@
         <div class="step-num">2</div>
         <h3 class="step-title">Add Quick Settings Tile</h3>
         <p class="step-text">
-          Swipe down your notification shade twice, tap the Edit (Pencil) icon, and drag <strong>XM6 Noise Control</strong> into your active tiles grid.
+          Swipe down your notification shade twice, tap the Edit (Pencil) icon, and drag <strong>Sony Audio Control</strong> into your active tiles grid.
         </p>
       </div>
 
       <div class="step-card">
         <div class="step-num">3</div>
-        <h3 class="step-title">ColorOS Optimization</h3>
+        <h3 class="step-title">Import EQ or Target Curve</h3>
         <p class="step-text">
-          On Oppo Find X9 Ultra / ColorOS, open the companion app once and grant <em>"Don't optimize"</em> battery permissions to prevent background suspension.
+          Open the app, select your favorite audiophile target curve (Harman, Oratory1990) or import any AutoEq / EqualizerAPO / <code>.peqdb</code> file.
         </p>
       </div>
     </div>
@@ -1173,39 +1299,20 @@
   <footer>
     <div class="container footer-content">
       <div class="footer-text">
-        © 2026 Sony WH-1000XM6 Quick Settings Project • Licensed under the MIT License.
+        © 2026 Sony Audio Tiles Project • Licensed under the MIT License.
         <br>Not affiliated with Sony Group Corporation.
       </div>
       <ul class="footer-links">
-        <li><a href="https://github.com/karkarbinksjar-hash/Sony-XM6-Tiles" class="footer-link">GitHub Repository</a></li>
-        <li><a href="https://github.com/karkarbinksjar-hash/Sony-XM6-Tiles/releases" class="footer-link">Releases</a></li>
-        <li><a href="https://github.com/karkarbinksjar-hash/Sony-XM6-Tiles/issues" class="footer-link">Bug Reports</a></li>
+        <li><a href="https://github.com/TheSwagInDisguise/Sony-Audio-Tiles" class="footer-link">GitHub Repository</a></li>
+        <li><a href="https://github.com/TheSwagInDisguise/Sony-Audio-Tiles/releases" class="footer-link">Releases</a></li>
+        <li><a href="https://github.com/TheSwagInDisguise/Sony-Audio-Tiles/issues" class="footer-link">Bug Reports</a></li>
       </ul>
     </div>
   </footer>
 
   <!-- Interactive JavaScript Logic -->
   <script>
-    // 1. Copy Checksum Logic
-    const checksumBtn = document.getElementById('checksumCopyBtn');
-    const copyLabel = document.getElementById('copyLabel');
-    const checksumHash = 'c2d2e530cc56df0b7e0fe2fee307df6cccb9f005f51244c0a2d85a2318c32f3f';
-
-    checksumBtn.addEventListener('click', async () => {
-      try {
-        await navigator.clipboard.writeText(checksumHash);
-        copyLabel.textContent = '[Copied! ✓]';
-        copyLabel.style.color = '#10b981';
-        setTimeout(() => {
-          copyLabel.textContent = '[Copy]';
-          copyLabel.style.color = 'var(--copper)';
-        }, 2500);
-      } catch (e) {
-        copyLabel.textContent = '[Selected]';
-      }
-    });
-
-    // 2. Interactive Tile Simulator
+    // 1. Interactive Tile Simulator
     const tile = document.getElementById('interactiveTile');
     const tileLabel = document.getElementById('tileLabel');
     const tileSub = document.getElementById('tileSub');
@@ -1214,19 +1321,19 @@
     const tileStates = [
       {
         modeClass: 'mode-nc',
-        label: 'XM6: NC On',
+        label: 'Sony: NC On',
         sub: 'Noise Cancelling Active',
         packet: '3E 0C 00 00 00 00 08 68 17 01 01 00 02 00 01 83 3C'
       },
       {
         modeClass: 'mode-ambient',
-        label: 'XM6: Ambient',
+        label: 'Sony: Ambient',
         sub: 'Ambient Sound Active',
         packet: '3E 0C 01 00 00 00 08 68 17 01 01 01 00 00 14 96 3C'
       },
       {
         modeClass: 'mode-off',
-        label: 'XM6: Off',
+        label: 'Sony: Off',
         sub: 'Noise Control Disabled',
         packet: '3E 0C 00 00 00 00 08 68 17 01 00 00 00 00 01 81 3C'
       }
@@ -1244,33 +1351,117 @@
       tilePacket.textContent = state.packet;
     });
 
-    // 3. Equalizer & Hardware Features Simulator
+    // 2. 10-Band EQ & Spline Visualizer Logic
+    const freqs = [31, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
+    const freqLabels = ['31Hz', '63Hz', '125Hz', '250Hz', '500Hz', '1kHz', '2kHz', '4kHz', '8kHz', '16kHz'];
+
+    const targetPresets = {
+      harman2020: { cb: 5, gains: [6.0, 5.0, 3.0, 0.0, -1.0, 0.5, 3.5, 7.0, 2.0, -1.0] },
+      harman2019: { cb: 6, gains: [7.0, 6.0, 3.5, 0.5, -0.5, 1.0, 4.0, 8.0, 2.5, -0.5] },
+      oratory:    { cb: 3, gains: [4.0, 3.5, 2.0, -0.5, 0.0, 0.0, 2.5, 5.0, 1.5, 0.0] },
+      basshead:   { cb: 9, gains: [10.0, 9.0, 7.0, 4.0, 1.0, -1.0, 0.0, 1.0, 2.0, 3.0] },
+      vocal:      { cb: 0, gains: [-1.0, -1.0, 0.0, 1.5, 2.5, 3.5, 4.0, 2.0, 1.0, 0.0] },
+      flat:       { cb: 0, gains: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] }
+    };
+
+    let currentGains = [...targetPresets.harman2020.gains];
     const cbSlider = document.getElementById('cbSlider');
-    const cbVal = document.getElementById('cbValDisplay');
-    const midSlider = document.getElementById('midSlider');
-    const midVal = document.getElementById('midValDisplay');
-    const stcToggle = document.getElementById('stcToggle');
-    const dseeToggle = document.getElementById('dseeToggle');
-    const eqPacket = document.getElementById('eqPacketDisplay');
+    const cbValDisplay = document.getElementById('cbValDisplay');
+    const eqPacketDisplay = document.getElementById('eqPacketDisplay');
+    const splineLinePath = document.getElementById('splineLinePath');
+    const splineFillPath = document.getElementById('splineFillPath');
+    const container = document.getElementById('bandSlidersContainer');
 
-    function updateEqPacket() {
+    // Build 10 slider columns
+    freqs.forEach((freq, idx) => {
+      const col = document.createElement('div');
+      col.className = 'band-col';
+      col.innerHTML = `
+        <span class="band-gain-lbl" id="gainLbl${idx}">+${currentGains[idx].toFixed(1)}</span>
+        <input type="range" class="band-slider-v" id="slider${idx}" min="-12" max="12" step="0.5" value="${currentGains[idx]}">
+        <span class="band-freq-lbl">${freqLabels[idx]}</span>
+      `;
+      container.appendChild(col);
+
+      const sl = col.querySelector(`#slider${idx}`);
+      sl.addEventListener('input', () => {
+        currentGains[idx] = parseFloat(sl.value);
+        document.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('active'));
+        updateEqView();
+      });
+    });
+
+    cbSlider.addEventListener('input', () => {
+      cbValDisplay.textContent = (cbSlider.value > 0 ? '+' : '') + cbSlider.value;
+      updateEqView();
+    });
+
+    // Preset buttons
+    document.querySelectorAll('.chip-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const pKey = btn.dataset.preset;
+        const p = targetPresets[pKey];
+        if (p) {
+          currentGains = [...p.gains];
+          cbSlider.value = p.cb;
+          cbValDisplay.textContent = (p.cb > 0 ? '+' : '') + p.cb;
+          freqs.forEach((_, idx) => {
+            const sl = document.getElementById(`slider${idx}`);
+            if (sl) sl.value = currentGains[idx];
+          });
+          updateEqView();
+        }
+      });
+    });
+
+    function updateEqView() {
+      // Update gain labels
+      currentGains.forEach((g, idx) => {
+        const lbl = document.getElementById(`gainLbl${idx}`);
+        if (lbl) lbl.textContent = (g > 0 ? '+' : '') + g.toFixed(1);
+      });
+
+      // Compute Spline Path
+      const svgW = 500;
+      const svgH = 180;
+      const zeroY = 90;
+      const points = [];
+
+      for (let x = 20; x <= 480; x += 5) {
+        const t = (x - 20) / 460;
+        // Interpolate across the 10 bands
+        const bandIndex = t * 9;
+        const low = Math.floor(bandIndex);
+        const high = Math.min(9, Math.ceil(bandIndex));
+        const frac = bandIndex - low;
+        const interpGain = currentGains[low] * (1 - frac) + currentGains[high] * frac;
+        const y = zeroY - (interpGain / 12) * 60;
+        points.push({ x, y });
+      }
+
+      let d = `M ${points[0].x} ${points[0].y}`;
+      for (let i = 1; i < points.length; i++) {
+        d += ` L ${points[i].x} ${points[i].y}`;
+      }
+      splineLinePath.setAttribute('d', d);
+
+      const fillD = `${d} L 480 ${zeroY} L 20 ${zeroY} Z`;
+      splineFillPath.setAttribute('d', fillD);
+
+      // Sony Hardware DSP Translation
       const cb = parseInt(cbSlider.value, 10);
-      const mid = parseInt(midSlider.value, 10);
-      cbVal.textContent = (cb > 0 ? '+' : '') + cb + ' dB';
-      midVal.textContent = (mid > 0 ? '+' : '') + mid + ' dB';
+      const b400 = Math.round((currentGains[3] + currentGains[4]) / 2);
+      const b1k = Math.round(currentGains[5]);
+      const b2k5 = Math.round(currentGains[6]);
+      const b6k3 = Math.round((currentGains[7] + currentGains[8]) / 2);
+      const b16k = Math.round(currentGains[9]);
 
-      const cbOffset = cb + 10;
-      const midOffset = mid + 10;
-      const stcStatus = stcToggle.checked ? 'ON' : 'OFF';
-      const dseeStatus = dseeToggle.checked ? 'AUTO' : 'OFF';
-
-      eqPacket.textContent = `0x58 (SET_EQ), Preset=0xA0 (Custom), CB=${cbOffset}, 10, ${midOffset}, 10, 10, 10 | STC=${stcStatus} | DSEE=${dseeStatus}`;
+      eqPacketDisplay.textContent = `0x58 (SET_EQ) | CB: ${cb + 10} (${cb > 0 ? '+' : ''}${cb}) | 400Hz: ${b400 + 10} | 1kHz: ${b1k + 10} | 2.5kHz: ${b2k5 + 10} | 6.3kHz: ${b6k3 + 10} | 16kHz: ${b16k + 10}`;
     }
 
-    cbSlider.addEventListener('input', updateEqPacket);
-    midSlider.addEventListener('input', updateEqPacket);
-    stcToggle.addEventListener('change', updateEqPacket);
-    dseeToggle.addEventListener('change', updateEqPacket);
+    updateEqView();
   </script>
 
 </body>

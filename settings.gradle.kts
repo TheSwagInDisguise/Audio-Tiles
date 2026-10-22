@@ -13,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "XM6NoiseControl"
+rootProject.name = "SonyAudioTiles"
 include(":app")

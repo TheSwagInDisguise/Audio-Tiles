@@ -19,6 +19,7 @@ class HeadphoneRepository(private val context: Context) {
     val noiseControlState: StateFlow<NoiseControlState> = connectionManager.noiseControlState
     val batteryState: StateFlow<BatteryState> = connectionManager.batteryState
     val equalizerState: StateFlow<EqualizerState> = connectionManager.equalizerState
+    val tenBandEqState: StateFlow<TenBandEqState> = connectionManager.tenBandEqState
     val soundFeaturesState: StateFlow<SoundFeaturesState> = connectionManager.soundFeaturesState
     val tileCycleScheme: StateFlow<TileCycleScheme> = connectionManager.tileCycleScheme
     val targetDevice: StateFlow<BluetoothDevice?> = connectionManager.targetDevice
@@ -74,6 +75,14 @@ class HeadphoneRepository(private val context: Context) {
 
     suspend fun queryEqualizer(): Result<Unit> {
         return connectionManager.queryEqualizer()
+    }
+
+    suspend fun applyTenBandEq(state: TenBandEqState): Result<Unit> {
+        return connectionManager.applyTenBandEq(state)
+    }
+
+    suspend fun importAndApplyPeqProfile(profile: PeqProfile): Result<Unit> {
+        return connectionManager.importAndApplyPeqProfile(profile)
     }
 
     suspend fun setSpeakToChat(enabled: Boolean, sensitivity: Int = 1, timeout: Int = 1): Result<Unit> {

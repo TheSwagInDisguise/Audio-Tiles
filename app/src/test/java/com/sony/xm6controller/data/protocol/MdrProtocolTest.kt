@@ -224,4 +224,44 @@ class MdrProtocolTest {
         val backFromOff = off.next(com.sony.xm6controller.domain.TileCycleScheme.NC_OFF)
         assertEquals(NoiseControlMode.NOISE_CANCELLING, backFromOff)
     }
+
+    @Test
+    fun testPeqParserJsonAndText() {
+        val sampleAutoEqText = """
+            Preamp: -4.5 dB
+            Filter 1: ON PK Fc 28 Hz Gain 4.8 dB Q 1.41
+            Filter 2: ON LSC Fc 105 Hz Gain -3.2 dB Q 0.71
+            Filter 3: ON PK Fc 1200 Hz Gain 2.1 dB Q 2.0
+            Filter 4: ON HSC Fc 8000 Hz Gain -1.5 dB Q 0.71
+        """.trimIndent()
+
+        val profile = com.sony.xm6controller.domain.PeqParser.parse(sampleAutoEqText, "Test AutoEq")
+        assertNotNull(profile)
+        assertEquals(-4.5f, profile!!.preampDb)
+        assertEquals(4, profile.filters.size)
+
+        val tenBand = profile.sampleToTenBand()
+        assertEquals(10, tenBand.bands.size)
+        val hw = tenBand.toSonyHardwareEq()
+        assertTrue(hw.clearBass in -10..10)
+        assertTrue(hw.band400Hz in -10..10)
+        assertTrue(hw.band1kHz in -10..10)
+
+        // Test JSON parsing
+        val sampleJson = """
+            {
+              "name": "WH-1000XM6 Harman",
+              "preamp": -3.2,
+              "filters": [
+                {"type": "PK", "freq": 105.0, "gain": -3.5, "q": 1.41},
+                {"type": "LSC", "freq": 80.0, "gain": 5.0, "q": 0.71}
+              ]
+            }
+        """.trimIndent()
+        val jsonProfile = com.sony.xm6controller.domain.PeqParser.parse(sampleJson, "Test JSON")
+        assertNotNull(jsonProfile)
+        assertEquals("WH-1000XM6 Harman", jsonProfile!!.name)
+        assertEquals(-3.2f, jsonProfile.preampDb)
+        assertEquals(2, jsonProfile.filters.size)
+    }
 }

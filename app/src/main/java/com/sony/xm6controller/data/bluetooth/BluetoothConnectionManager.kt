@@ -19,8 +19,10 @@ import com.sony.xm6controller.domain.EqPreset
 import com.sony.xm6controller.domain.EqualizerState
 import com.sony.xm6controller.domain.NoiseControlMode
 import com.sony.xm6controller.domain.NoiseControlState
+import com.sony.xm6controller.domain.PeqProfile
 import com.sony.xm6controller.domain.SoundFeaturesState
 import com.sony.xm6controller.domain.SpeakToChatState
+import com.sony.xm6controller.domain.TenBandEqState
 import com.sony.xm6controller.domain.TileCycleScheme
 import com.sony.xm6controller.service.XM6ForegroundService
 import kotlinx.coroutines.CompletableDeferred
@@ -83,6 +85,9 @@ class BluetoothConnectionManager private constructor(private val context: Contex
 
     private val _equalizerState = MutableStateFlow(EqualizerState())
     val equalizerState: StateFlow<EqualizerState> = _equalizerState.asStateFlow()
+
+    private val _tenBandEqState = MutableStateFlow(TenBandEqState())
+    val tenBandEqState: StateFlow<TenBandEqState> = _tenBandEqState.asStateFlow()
 
     private val _soundFeaturesState = MutableStateFlow(SoundFeaturesState())
     val soundFeaturesState: StateFlow<SoundFeaturesState> = _soundFeaturesState.asStateFlow()
@@ -525,6 +530,47 @@ class BluetoothConnectionManager private constructor(private val context: Contex
         )
         touchActivity()
         return Result.success(Unit)
+    }
+
+    /**
+     * Applies a 10-band Equalizer curve by downsampling & translating to Sony hardware DSP.
+     */
+    suspend fun applyTenBandEq(state: TenBandEqState): Result<Unit> = commandMutex.withLock {
+        if (socketWrapper?.isConnected != true) {
+            val conn = connect()
+            if (conn.isFailure) return conn
+        }
+
+        val hw = state.toSonyHardwareEq()
+        addLog("Applying 10-Band EQ '${state.profileName}' -> Sony DSP (CB=${hw.clearBass}, 400=${hw.band400Hz}, 1k=${hw.band1kHz}, 2.5k=${hw.band2_5kHz}, 6.3k=${hw.band6_3kHz}, 16k=${hw.band16kHz})")
+        val frame = MdrCommandBuilder.buildSetEqualizerBandsFrame(
+            seq = txSequence,
+            preset = EqPreset.CUSTOM_1,
+            clearBass = hw.clearBass,
+            bands = hw.bands
+        )
+        sendRawBytes(frame)
+        _tenBandEqState.value = state
+        _equalizerState.value = EqualizerState(
+            preset = EqPreset.CUSTOM_1,
+            clearBass = hw.clearBass,
+            band400Hz = hw.band400Hz,
+            band1kHz = hw.band1kHz,
+            band2_5kHz = hw.band2_5kHz,
+            band6_3kHz = hw.band6_3kHz,
+            band16kHz = hw.band16kHz
+        )
+        touchActivity()
+        return Result.success(Unit)
+    }
+
+    /**
+     * Imports and applies a PEQ profile (from peqdb, AutoEq, or EqualizerAPO).
+     */
+    suspend fun importAndApplyPeqProfile(profile: PeqProfile): Result<Unit> {
+        addLog("Imported PEQ profile: '${profile.name}' (${profile.filters.size} filters, Preamp: ${profile.preampDb} dB)")
+        val tenBand = profile.sampleToTenBand()
+        return applyTenBandEq(tenBand)
     }
 
     /**

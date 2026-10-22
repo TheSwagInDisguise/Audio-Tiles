@@ -77,10 +77,12 @@ jobs:
           $ANDROID_HOME/build-tools/34.0.0/apksigner verify --verbose --print-certs "$RAW_APK"
 
           mkdir -p dist
-          FINAL_APK="dist/Sony-XM6-NoiseControl-${VERSION}.apk"
+          FINAL_APK="dist/Sony-Audio-Tiles-${VERSION}.apk"
           cp "$RAW_APK" "$FINAL_APK"
+          cp "$RAW_APK" "dist/Sony-XM6-NoiseControl-${VERSION}.apk"
 
-          # Compute SHA-256 for the final named asset
+          # Compute SHA-256 for release assets
+          (cd dist && sha256sum "Sony-Audio-Tiles-${VERSION}.apk" > "Sony-Audio-Tiles-${VERSION}-sha256.txt")
           (cd dist && sha256sum "Sony-XM6-NoiseControl-${VERSION}.apk" > "Sony-XM6-NoiseControl-${VERSION}-sha256.txt")
           ls -la dist/
 
@@ -95,23 +97,27 @@ jobs:
       - name: Create GitHub Release & Upload Assets
         uses: softprops/action-gh-release@v2
         with:
-          name: "Sony XM6 Noise Control ${{ github.ref_name || inputs.version }}"
+          name: "Sony Audio Tiles ${{ github.ref_name || inputs.version }}"
           draft: false
           prerelease: false
           generate_release_notes: true
           body: |
-            ### 🎧 Sony WH-1000XM6 Quick Settings Noise Control Tile
+            ### 🎧 Sony Audio Tiles - Universal Quick Settings & Sound Connect Hub
 
             #### Highlights
-            - **Quick Settings Tile (`TileService`)**: Cycle between Noise Cancelling, Ambient Sound, and Off directly from the notification shade.
-            - **Resilient Multi-Tier RFCOMM**: Prioritizes cached Sony V2 UUIDs (`956c7b26-d49a-4ba8-b03f-b17d393cb6e2`) with Insecure RFCOMM negotiation (bypasses Android 14+ link-key authentication collisions on paired audio devices) and direct channel reflection fallbacks.
-            - **Hardware Sync**: Real-time listening for physical headphone button clicks (`0x69` notification frames).
-            - **ColorOS / Oppo Find X9 Ultra Optimizations**: WakeLock protection during tile interactions, background battery exemption deep-links, and conflict mitigation for background Songpal/Sound Connect processes.
-            - **Persistent Signing Key**: Built and signed with the official persistent keystore stored in repository secrets. Clean update path (`INSTALL_FAILED_UPDATE_INCOMPATIBLE` prevented).
+            - **Universal Sony Ecosystem**: Seamless support for WH-1000XM6, WH-1000XM5, WH-1000XM4, WH-1000XM3, WF-1000XM5, WF-1000XM4, LinkBuds, ULT WEAR, and WH-CH720N.
+            - **10-Band Graphic Equalizer with Live Spline Curve**: ISO center frequencies (31Hz to 16kHz) with intelligent downsampling to Sony hardware DSP.
+            - **PEQDB & AutoEq Profile Import**: Load parametric EQ curves (.peqdb, .json, .txt) with biquad filter transfer function modeling.
+            - **Multi-Cell TWS Battery Telemetry**: Separate real-time monitoring for Left earbud, Right earbud, and Charging Case.
+            - **Full Sound Connect Parity**: Speak-to-Chat, DSEE Extreme AI upscaling, wear detection auto-pause, auto power-off timer, touch sensor toggles, and LDAC quality priority.
+            - **Sub-50ms Quick Settings Tile (`TileService`)**: Non-blocking noise mode cycling from notification shade.
+            - **ColorOS Guardrails**: Insecure RFCOMM negotiation and 120s Smart Power Saver.
 
             #### Verification
             - **Certificate SHA-256**: `77:57:BB:B8:9E:01:6F:7B:E4:F0:B6:7E:1A:18:17:3A:D5:DD:44:80:50:DF:B8:E8:15:A5:07:33:B8:51:D5:7D`
             - **Certificate SHA-1**: `39:DE:D8:30:54:BD:DA:9C:4E:83:04:52:10:BB:7E:EF:11:2B:83:3A`
           files: |
+            dist/Sony-Audio-Tiles-*.apk
+            dist/Sony-Audio-Tiles-*-sha256.txt
             dist/Sony-XM6-NoiseControl-*.apk
             dist/Sony-XM6-NoiseControl-*-sha256.txt
