@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Sony XM6 Noise Control</string>
+    <string name="tile_label">XM6 Noise Control</string>
+    <string name="tile_subtitle_nc">Noise Cancelling</string>
+    <string name="tile_subtitle_ambient">Ambient Sound</string>
+    <string name="tile_subtitle_off">Off</string>
+</resources>
