@@ -1,8 +1,31 @@
 # Sony WH-1000XM6 Noise Control Tile for Android 14+ (ColorOS / Oppo Find X9 Ultra)
 
+<p align="center">
+  <img src="docs/assets/hero-banner.png" alt="Sony XM6 Noise Control Controller Showcase" width="100%">
+</p>
+
+<p align="center">
+  <a href="https://theswagindisguise.github.io/Sony-XM6-Tiles/"><img src="https://img.shields.io/badge/Webpage-Live%20Showcase-d49b6a?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Live Showcase"></a>
+  <a href="https://github.com/karkarbinksjar-hash/Sony-XM6-Tiles/releases/tag/v1.0.2"><img src="https://img.shields.io/badge/Release-v1.0.2-10b981?style=for-the-badge&logo=android&logoColor=white" alt="v1.0.2 Release"></a>
+  <a href="https://github.com/karkarbinksjar-hash/Sony-XM6-Tiles/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-38bdf8?style=for-the-badge" alt="MIT License"></a>
+  <a href="https://github.com/karkarbinksjar-hash/Sony-XM6-Tiles/releases/download/v1.0.2/Sony-XM6-NoiseControl-v1.0.2.apk"><img src="https://img.shields.io/badge/Download-Signed%20APK-f0b27a?style=for-the-badge&logo=download&logoColor=0b0e14" alt="Download APK"></a>
+</p>
+
 A lightweight, open-source Android app targeting Android 14+ (API 34+) that provides an **Android Quick Settings Tile** (`TileService`) to instantly cycle noise control modes (**Noise Cancelling** &rarr; **Ambient Sound** &rarr; **Off**) on paired **Sony WH-1000XM6** headphones using the native reverse-engineered Sony MDR protocol over Bluetooth Classic (RFCOMM/SPP).
 
+🌐 **Official Webpage**: [theswagindisguise.github.io/Sony-XM6-Tiles](https://theswagindisguise.github.io/Sony-XM6-Tiles/)
+
 Optimized specifically for **ColorOS / Oppo Find X9 Ultra** with dedicated background execution guardrails, CPU WakeLock protection during tile interactions, and battery optimization exclusion deep-links.
+
+---
+
+## 📸 Screenshots & UI Showcase
+
+<p align="center">
+  <img src="docs/assets/screenshot-quick-settings.png" alt="Notification Shade Tile" width="31%">&nbsp;
+  <img src="docs/assets/screenshot-dashboard.png" alt="Companion Hub Dashboard" width="31%">&nbsp;
+  <img src="docs/assets/screenshot-cycling.png" alt="3-Way Mode Cycling Flow" width="35%">
+</p>
 
 ---
 
