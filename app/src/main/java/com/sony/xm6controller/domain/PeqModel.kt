@@ -197,7 +197,7 @@ object PeqParser {
      * }
      */
     fun parseJson(jsonString: String, defaultName: String): PeqProfile? {
-        return try {
+        try {
             val obj = JSONObject(jsonString)
             val name = obj.optString("name", defaultName)
             val preamp = obj.optDouble("preamp", 0.0).toFloat()
@@ -221,10 +221,50 @@ object PeqParser {
                 }
             }
 
-            if (filtersList.isEmpty()) null else PeqProfile(name, preamp, filtersList)
-        } catch (_: Exception) {
-            null
+            if (filtersList.isNotEmpty()) {
+                return PeqProfile(name, preamp, filtersList)
+            }
+        } catch (_: Throwable) {
+            // Fallback for environments where android.jar JSONObject is a mock/stub
         }
+
+        return parseJsonFallback(jsonString, defaultName)
+    }
+
+    private fun parseJsonFallback(jsonString: String, defaultName: String): PeqProfile? {
+        val nameMatch = Regex("\"name\"\\s*:\\s*\"([^\"]+)\"").find(jsonString)
+        val name = nameMatch?.groupValues?.get(1) ?: defaultName
+
+        val preampMatch = Regex("\"preamp\"\\s*:\\s*([+-]?[0-9]*\\.?[0-9]+)").find(jsonString)
+        val preamp = preampMatch?.groupValues?.get(1)?.toFloatOrNull() ?: 0.0f
+
+        val filters = mutableListOf<PeqFilter>()
+        val blockPattern = Regex("\\{([^{}]+)\\}")
+        for (m in blockPattern.findAll(jsonString)) {
+            val block = m.groupValues[1]
+            if (block.contains("freq") && block.contains("gain")) {
+                val tMatch = Regex("\"type\"\\s*:\\s*\"([^\"]+)\"").find(block)
+                val fMatch = Regex("\"freq\"\\s*:\\s*([+-]?[0-9]*\\.?[0-9]+)").find(block)
+                val gMatch = Regex("\"gain\"\\s*:\\s*([+-]?[0-9]*\\.?[0-9]+)").find(block)
+                val qMatch = Regex("\"q\"\\s*:\\s*([+-]?[0-9]*\\.?[0-9]+)").find(block)
+
+                if (fMatch != null && gMatch != null) {
+                    val typeStr = (tMatch?.groupValues?.get(1) ?: "PK").uppercase()
+                    val freq = fMatch.groupValues[1].toFloatOrNull() ?: 1000f
+                    val gain = gMatch.groupValues[1].toFloatOrNull() ?: 0f
+                    val q = qMatch?.groupValues?.get(1)?.toFloatOrNull() ?: 1.41f
+
+                    val type = when {
+                        typeStr.contains("LSC") || typeStr.contains("LOW_SHELF") || typeStr == "LS" -> PeqFilterType.LOW_SHELF
+                        typeStr.contains("HSC") || typeStr.contains("HIGH_SHELF") || typeStr == "HS" -> PeqFilterType.HIGH_SHELF
+                        else -> PeqFilterType.PEAK
+                    }
+                    filters.add(PeqFilter(type, freq, gain, q))
+                }
+            }
+        }
+
+        return if (filters.isNotEmpty()) PeqProfile(name, preamp, filters) else null
     }
 
     /**
