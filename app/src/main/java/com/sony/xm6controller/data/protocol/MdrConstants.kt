@@ -34,6 +34,11 @@ object MdrConstants {
     const val OP_ASC_SET: Byte = 0x68.toByte()     // Set noise control state: [0x68, subtype, 0x01, on, amb, wind?, voice, level]
     const val OP_ASC_NOTIFY: Byte = 0x69.toByte()  // Unsolicited state notify (e.g. physical NC button pressed)
 
+    // --- Battery Telemetry OpCodes ---
+    const val OP_BATTERY_GET: Byte = 0x22.toByte()     // Query battery state: [0x22, 0x00]
+    const val OP_BATTERY_RET: Byte = 0x23.toByte()     // Battery response: [0x23, 0x00, level, charging]
+    const val OP_BATTERY_NOTIFY: Byte = 0x24.toByte()  // Unsolicited battery update: [0x24, 0x00, level, charging]
+
     // --- Noise Control Subtypes ---
     const val SUBTYPE_NC_ASM_V2: Byte = 0x17.toByte()  // MDR v2 standard for WH-1000XM5 / WH-1000XM6 (8-byte payload with wind byte)
     const val SUBTYPE_NC_ASM_ALT: Byte = 0x15.toByte() // Alternate subtype used on select firmware versions (7-byte payload)

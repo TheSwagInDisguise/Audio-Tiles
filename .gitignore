@@ -15,3 +15,5 @@ captures/
 .sudo_as_admin_successful
 .cache/
 uploads/
+Unselected files/
+.bashrc

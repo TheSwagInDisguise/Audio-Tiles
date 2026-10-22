@@ -12,8 +12,12 @@ android {
         applicationId = "com.sony.xm6controller"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+
+        val envVerName = System.getenv("VERSION_NAME")
+        val envVerCode = System.getenv("VERSION_CODE")?.toIntOrNull()
+
+        versionCode = envVerCode ?: 2
+        versionName = envVerName ?: "1.0.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

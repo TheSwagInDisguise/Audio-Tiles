@@ -53,7 +53,18 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
-        run: ./gradlew assembleRelease --no-daemon
+        run: |
+          VERSION="${{ github.ref_name }}"
+          if [ -z "$VERSION" ] || [ "$VERSION" = "main" ]; then
+            VERSION="${{ inputs.version }}"
+          fi
+          CLEAN_VER="${VERSION#v}"
+          export VERSION_NAME="$CLEAN_VER"
+          # Convert semantic version 1.0.2 -> 10002
+          IFS='.' read -r major minor patch <<< "$CLEAN_VER"
+          export VERSION_CODE=$(( ${major:-1} * 10000 + ${minor:-0} * 100 + ${patch:-0} ))
+          echo "Building Release APK with VERSION_NAME=$VERSION_NAME, VERSION_CODE=$VERSION_CODE"
+          ./gradlew assembleRelease --no-daemon
 
       - name: Prepare Clean User-Facing Release Assets
         run: |

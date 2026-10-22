@@ -3,7 +3,10 @@ package com.sony.xm6controller.data.bluetooth
 import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.bluetooth.BluetoothDevice
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.util.Log
 import com.sony.xm6controller.data.protocol.MdrCommandBuilder
 import com.sony.xm6controller.data.protocol.MdrConstants
@@ -11,8 +14,11 @@ import com.sony.xm6controller.data.protocol.MdrFrameDecoder
 import com.sony.xm6controller.data.protocol.MdrFrameEncoder
 import com.sony.xm6controller.data.protocol.MdrPacket
 import com.sony.xm6controller.data.protocol.MdrResponseParser
+import com.sony.xm6controller.domain.BatteryState
 import com.sony.xm6controller.domain.NoiseControlMode
 import com.sony.xm6controller.domain.NoiseControlState
+import com.sony.xm6controller.domain.TileCycleScheme
+import com.sony.xm6controller.service.XM6ForegroundService
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -34,10 +40,13 @@ import java.io.IOException
  * Singleton Bluetooth Connection & Session Manager for Sony WH-1000XM6.
  *
  * Coordinates:
- * - Thread-safe RFCOMM socket lifecycle
+ * - Thread-safe RFCOMM socket lifecycle with multi-tier fallback
  * - Alternating-bit Stop-and-Wait ARQ sequencing
  * - Automatic host ACK replies to device frames
- * - Live state synchronization for Quick Settings Tile and Compose UI
+ * - Headphone battery telemetry queries and live updates
+ * - Ambient sound level (1..20), Voice Focus, and Wind Noise Reduction controls
+ * - Idle power-saving auto-disconnect (conserves battery when foreground service is off)
+ * - Hardware disconnect receiver (cleans up immediately when headphones power down)
  */
 class BluetoothConnectionManager private constructor(private val context: Context) {
 
@@ -48,6 +57,7 @@ class BluetoothConnectionManager private constructor(private val context: Contex
 
     private var socketWrapper: BluetoothSocketWrapper? = null
     private var readJob: Job? = null
+    private var idleDisconnectJob: Job? = null
 
     // Alternating transmit sequence number (0 or 1)
     private var txSequence = 0
@@ -64,6 +74,12 @@ class BluetoothConnectionManager private constructor(private val context: Contex
     private val _noiseControlState = MutableStateFlow(NoiseControlState())
     val noiseControlState: StateFlow<NoiseControlState> = _noiseControlState.asStateFlow()
 
+    private val _batteryState = MutableStateFlow(BatteryState())
+    val batteryState: StateFlow<BatteryState> = _batteryState.asStateFlow()
+
+    private val _tileCycleScheme = MutableStateFlow(TileCycleScheme.ALL_THREE)
+    val tileCycleScheme: StateFlow<TileCycleScheme> = _tileCycleScheme.asStateFlow()
+
     private val _targetDevice = MutableStateFlow<BluetoothDevice?>(null)
     val targetDevice: StateFlow<BluetoothDevice?> = _targetDevice.asStateFlow()
 
@@ -73,6 +89,12 @@ class BluetoothConnectionManager private constructor(private val context: Contex
     init {
         // Initial target scan
         refreshTargetDevice()
+        registerBluetoothAclReceiver()
+    }
+
+    fun setTileCycleScheme(scheme: TileCycleScheme) {
+        _tileCycleScheme.value = scheme
+        addLog("Tile cycle scheme changed to: ${scheme.label}")
     }
 
     fun refreshTargetDevice(preferredAddress: String? = null) {
@@ -89,6 +111,51 @@ class BluetoothConnectionManager private constructor(private val context: Contex
             current.removeAt(0)
         }
         _diagnosticLogs.value = current
+    }
+
+    /**
+     * Resets the idle disconnect timer to conserve phone and headphone battery.
+     * When foreground service is not running, drops the socket after 2 minutes of inactivity.
+     */
+    private fun touchActivity() {
+        idleDisconnectJob?.cancel()
+        if (!XM6ForegroundService.isServiceRunning) {
+            idleDisconnectJob = scope.launch {
+                delay(120_000L) // 2 minutes idle timeout
+                if (socketWrapper?.isConnected == true && !XM6ForegroundService.isServiceRunning) {
+                    addLog("Power Saver: Auto-disconnecting idle RFCOMM socket (120s timeout)")
+                    disconnectInternal()
+                }
+            }
+        }
+    }
+
+    /**
+     * Registers a broadcast receiver to instantly release socket resources
+     * when the headphone is turned off or leaves range.
+     */
+    private fun registerBluetoothAclReceiver() {
+        val filter = IntentFilter().apply {
+            addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED)
+        }
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(c: Context?, intent: Intent?) {
+                if (intent?.action == BluetoothDevice.ACTION_ACL_DISCONNECTED) {
+                    @Suppress("DEPRECATION")
+                    val dev = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
+                    val currentAddr = _targetDevice.value?.address
+                    if (dev != null && dev.address.equals(currentAddr, ignoreCase = true)) {
+                        addLog("Bluetooth ACL disconnected for ${dev.name ?: dev.address}. Cleaning up socket.")
+                        scope.launch { disconnect() }
+                    }
+                }
+            }
+        }
+        try {
+            context.registerReceiver(receiver, filter)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to register ACL receiver: ${e.message}")
+        }
     }
 
     /**
@@ -110,6 +177,7 @@ class BluetoothConnectionManager private constructor(private val context: Contex
 
         if (socketWrapper?.isConnected == true && _connectionState.value is ConnectionState.Connected) {
             addLog("Already connected to $deviceName ($address)")
+            touchActivity()
             return Result.success(Unit)
         }
 
@@ -159,12 +227,16 @@ class BluetoothConnectionManager private constructor(private val context: Contex
         val initialAsc = queryNoiseControlInternal()
         if (initialAsc != null) {
             _noiseControlState.value = initialAsc
-            addLog("Initial state: ${initialAsc.mode.label} (Level ${initialAsc.ambientLevel})")
+            addLog("Headphone state: ${initialAsc.mode.label} (Level ${initialAsc.ambientLevel})")
         } else {
-            addLog("ASC query not answered yet; ready for commands.")
+            addLog("ASC query not answered yet; ready for mode commands.")
         }
 
+        // Query initial Battery State (0x22 0x00)
+        queryBatteryInternal()
+
         _connectionState.value = ConnectionState.Connected(deviceName, address)
+        touchActivity()
         return Result.success(Unit)
     }
 
@@ -184,7 +256,7 @@ class BluetoothConnectionManager private constructor(private val context: Contex
             return false
         }
 
-        val result = withTimeoutOrNull(3000L) {
+        val result = withTimeoutOrNull(2500L) {
             waiter.await()
         }
         pendingHandshakeWaiter = null
@@ -205,7 +277,7 @@ class BluetoothConnectionManager private constructor(private val context: Contex
             return null
         }
 
-        var state = withTimeoutOrNull(2500L) { waiter.await() }
+        var state = withTimeoutOrNull(2000L) { waiter.await() }
 
         // Fallback to alternate 0x15 subtype if 0x17 was not answered
         if (state == null) {
@@ -213,7 +285,7 @@ class BluetoothConnectionManager private constructor(private val context: Contex
             pendingAscWaiter = fallbackWaiter
             val fallbackFrame = MdrCommandBuilder.buildGetNoiseControlFrame(txSequence, MdrConstants.SUBTYPE_NC_ASM_ALT)
             if (sendRawBytes(fallbackFrame)) {
-                state = withTimeoutOrNull(2000L) { fallbackWaiter.await() }
+                state = withTimeoutOrNull(1500L) { fallbackWaiter.await() }
             }
         }
 
@@ -222,13 +294,31 @@ class BluetoothConnectionManager private constructor(private val context: Contex
     }
 
     /**
+     * Queries headset for battery level.
+     */
+    private suspend fun queryBatteryInternal() {
+        val frame = MdrCommandBuilder.buildGetBatteryFrame(txSequence)
+        sendRawBytes(frame)
+    }
+
+    /**
+     * Public battery refresh method.
+     */
+    suspend fun queryBattery(): Result<Unit> = commandMutex.withLock {
+        if (socketWrapper?.isConnected != true) {
+            val conn = connect()
+            if (conn.isFailure) return conn
+        }
+        queryBatteryInternal()
+        touchActivity()
+        return Result.success(Unit)
+    }
+
+    /**
      * Sets noise control mode on the headphone.
-     * Ensures connection is alive, frames command with current sequence,
-     * awaits ACK and update notification.
      */
     suspend fun setMode(targetMode: NoiseControlMode): Result<NoiseControlMode> = commandMutex.withLock {
         if (socketWrapper?.isConnected != true) {
-            // Attempt auto-connect if disconnected
             val conn = connect()
             if (conn.isFailure) {
                 return Result.failure(conn.exceptionOrNull() ?: IOException("Not connected"))
@@ -265,20 +355,105 @@ class BluetoothConnectionManager private constructor(private val context: Contex
             addLog("ACK received (seq=$ackReceived). Mode applied.")
         }
 
-        // Optimistically update local state to maintain snappy Quick Settings Tile UX
         val updatedState = currentState.copy(mode = targetMode)
         _noiseControlState.value = updatedState
+        touchActivity()
 
         return Result.success(targetMode)
     }
 
     /**
-     * Cycles through noise control modes in strict order:
-     * Noise Cancelling -> Ambient Sound -> Off -> Noise Cancelling
+     * Sets the Ambient Sound level (1 to 20).
+     */
+    suspend fun setAmbientLevel(level: Int): Result<Unit> = commandMutex.withLock {
+        if (socketWrapper?.isConnected != true) {
+            val conn = connect()
+            if (conn.isFailure) return conn
+        }
+
+        val clamped = level.coerceIn(MdrConstants.AMBIENT_LEVEL_MIN, MdrConstants.AMBIENT_LEVEL_MAX)
+        val current = _noiseControlState.value
+
+        addLog("Setting ambient sound level to $clamped...")
+        val frame = MdrCommandBuilder.buildSetNoiseControlFrame(
+            seq = txSequence,
+            targetMode = NoiseControlMode.AMBIENT_SOUND,
+            currentState = current,
+            ambientLevel = clamped,
+            focusOnVoice = current.focusOnVoice
+        )
+
+        sendRawBytes(frame)
+        _noiseControlState.value = current.copy(
+            mode = NoiseControlMode.AMBIENT_SOUND,
+            ambientLevel = clamped
+        )
+        touchActivity()
+        return Result.success(Unit)
+    }
+
+    /**
+     * Toggles Voice Focus in Ambient Sound mode.
+     */
+    suspend fun setFocusOnVoice(enabled: Boolean): Result<Unit> = commandMutex.withLock {
+        if (socketWrapper?.isConnected != true) {
+            val conn = connect()
+            if (conn.isFailure) return conn
+        }
+
+        val current = _noiseControlState.value
+        addLog("Setting Focus on Voice: $enabled...")
+        val frame = MdrCommandBuilder.buildSetNoiseControlFrame(
+            seq = txSequence,
+            targetMode = NoiseControlMode.AMBIENT_SOUND,
+            currentState = current,
+            ambientLevel = current.ambientLevel,
+            focusOnVoice = enabled
+        )
+
+        sendRawBytes(frame)
+        _noiseControlState.value = current.copy(
+            mode = NoiseControlMode.AMBIENT_SOUND,
+            focusOnVoice = enabled
+        )
+        touchActivity()
+        return Result.success(Unit)
+    }
+
+    /**
+     * Toggles Wind Noise Reduction in Noise Cancelling mode.
+     */
+    suspend fun setWindNoiseReduction(enabled: Boolean): Result<Unit> = commandMutex.withLock {
+        if (socketWrapper?.isConnected != true) {
+            val conn = connect()
+            if (conn.isFailure) return conn
+        }
+
+        val current = _noiseControlState.value
+        addLog("Setting Wind Noise Reduction: $enabled...")
+        val frame = MdrCommandBuilder.buildSetNoiseControlFrame(
+            seq = txSequence,
+            targetMode = NoiseControlMode.NOISE_CANCELLING,
+            currentState = current.copy(windNoiseReduction = enabled),
+            ambientLevel = current.ambientLevel,
+            focusOnVoice = current.focusOnVoice
+        )
+
+        sendRawBytes(frame)
+        _noiseControlState.value = current.copy(
+            mode = NoiseControlMode.NOISE_CANCELLING,
+            windNoiseReduction = enabled
+        )
+        touchActivity()
+        return Result.success(Unit)
+    }
+
+    /**
+     * Cycles through noise control modes using the active cycle scheme.
      */
     suspend fun cycleMode(): Result<NoiseControlMode> {
         val current = _noiseControlState.value.mode
-        val next = current.next()
+        val next = current.next(_tileCycleScheme.value)
         return setMode(next)
     }
 
@@ -298,7 +473,6 @@ class BluetoothConnectionManager private constructor(private val context: Contex
 
     /**
      * Transmits host ACK frame acknowledging device frame with sequence (1 - seq).
-     * Crucial for maintaining MDR v2 stream synchronization.
      */
     private fun sendHostAck(ackSeq: Int) {
         scope.launch {
@@ -353,15 +527,12 @@ class BluetoothConnectionManager private constructor(private val context: Contex
     private fun handleIncomingPacket(packet: MdrPacket) {
         when (packet.type) {
             MdrConstants.TYPE_ACK -> {
-                // Device acknowledged our packet.
-                // Adopt the sequence or flip txSequence
                 txSequence = 1 - txSequence
                 pendingAckWaiter?.complete(packet.sequence)
             }
 
             MdrConstants.TYPE_COMMAND_1,
             MdrConstants.TYPE_COMMAND_2 -> {
-                // Device sent a data frame. We MUST send an ACK back immediately!
                 val ackSeq = 1 - packet.sequence
                 sendHostAck(ackSeq)
 
@@ -383,6 +554,18 @@ class BluetoothConnectionManager private constructor(private val context: Contex
                         val opcodeName = if (payload[0] == MdrConstants.OP_ASC_NOTIFY) "NOTIFY (Headset Button)" else "GET_RESPONSE"
                         addLog("Received $opcodeName: ${ascState.mode.label} (Level ${ascState.ambientLevel})")
                     }
+                    touchActivity()
+                    return
+                }
+
+                // Check for Battery Telemetry (0x23 RET or 0x24 NOTIFY)
+                if (payload.size >= 3 && (payload[0] == MdrConstants.OP_BATTERY_RET || payload[0] == MdrConstants.OP_BATTERY_NOTIFY)) {
+                    val level = payload[2].toInt() and 0xFF
+                    val isCharging = if (payload.size >= 4) (payload[3].toInt() != 0) else false
+                    _batteryState.value = BatteryState(level = level, isCharging = isCharging)
+                    addLog("Battery Telemetry: $level% ${if (isCharging) "(Charging)" else ""}")
+                    touchActivity()
+                    return
                 }
             }
         }
@@ -396,6 +579,8 @@ class BluetoothConnectionManager private constructor(private val context: Contex
     }
 
     private fun disconnectInternal() {
+        idleDisconnectJob?.cancel()
+        idleDisconnectJob = null
         readJob?.cancel()
         readJob = null
         socketWrapper?.close()

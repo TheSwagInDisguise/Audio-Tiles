@@ -17,6 +17,8 @@ class HeadphoneRepository(private val context: Context) {
 
     val connectionState: StateFlow<ConnectionState> = connectionManager.connectionState
     val noiseControlState: StateFlow<NoiseControlState> = connectionManager.noiseControlState
+    val batteryState: StateFlow<BatteryState> = connectionManager.batteryState
+    val tileCycleScheme: StateFlow<TileCycleScheme> = connectionManager.tileCycleScheme
     val targetDevice: StateFlow<BluetoothDevice?> = connectionManager.targetDevice
     val diagnosticLogs: StateFlow<List<String>> = connectionManager.diagnosticLogs
 
@@ -24,6 +26,7 @@ class HeadphoneRepository(private val context: Context) {
     fun hasBluetoothPermission(): Boolean = scanner.hasBluetoothPermission()
     fun getPairedDevices(): List<BluetoothDevice> = scanner.getPairedDevices()
     fun refreshTargetDevice(preferredAddress: String? = null) = connectionManager.refreshTargetDevice(preferredAddress)
+    fun setTileCycleScheme(scheme: TileCycleScheme) = connectionManager.setTileCycleScheme(scheme)
 
     suspend fun connect(target: BluetoothDevice? = null): Result<Unit> {
         return connectionManager.connect(target)
@@ -39,6 +42,22 @@ class HeadphoneRepository(private val context: Context) {
 
     suspend fun cycleMode(): Result<NoiseControlMode> {
         return connectionManager.cycleMode()
+    }
+
+    suspend fun setAmbientLevel(level: Int): Result<Unit> {
+        return connectionManager.setAmbientLevel(level)
+    }
+
+    suspend fun setFocusOnVoice(enabled: Boolean): Result<Unit> {
+        return connectionManager.setFocusOnVoice(enabled)
+    }
+
+    suspend fun setWindNoiseReduction(enabled: Boolean): Result<Unit> {
+        return connectionManager.setWindNoiseReduction(enabled)
+    }
+
+    suspend fun queryBattery(): Result<Unit> {
+        return connectionManager.queryBattery()
     }
 
     companion object {

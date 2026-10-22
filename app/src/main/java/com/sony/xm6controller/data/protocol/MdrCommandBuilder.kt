@@ -93,8 +93,14 @@ object MdrCommandBuilder {
                 }
             }
 
+            val windByte = if (currentState.windNoiseReduction && targetMode == NoiseControlMode.NOISE_CANCELLING) {
+                MdrConstants.WIND_NOISE_REDUCTION_ON
+            } else {
+                MdrConstants.WIND_NOISE_REDUCTION_OFF
+            }
+
             if (hasWind && pl.size > 5) {
-                pl[5] = MdrConstants.WIND_NOISE_REDUCTION_OFF // 0x02
+                pl[5] = windByte
             }
 
             val voiceIdx = if (hasWind) 6 else 5
@@ -128,16 +134,35 @@ object MdrCommandBuilder {
             }
         }
 
+        val windByte = if (currentState.windNoiseReduction && targetMode == NoiseControlMode.NOISE_CANCELLING) {
+            MdrConstants.WIND_NOISE_REDUCTION_ON
+        } else {
+            MdrConstants.WIND_NOISE_REDUCTION_OFF
+        }
+
         return byteArrayOf(
             MdrConstants.OP_ASC_SET,                        // 0x68
             subtype,                                        // 0x17
             0x01.toByte(),                                  // Config selector
             onByte,                                         // On/Off (0x01 or 0x00)
             ambByte,                                        // Mode (0x00 NC, 0x01 Ambient)
-            MdrConstants.WIND_NOISE_REDUCTION_OFF,          // 0x02 Wind noise reduction off
+            windByte,                                       // Wind noise reduction byte
             if (focusOnVoice) 0x01.toByte() else 0x00.toByte(), // Voice focus
             clampedLevel                                    // Ambient level (1..20)
         )
+    }
+
+    /**
+     * Builds complete framed and escaped packet to query headphone battery level.
+     */
+    fun buildGetBatteryFrame(seq: Int): ByteArray {
+        val payload = byteArrayOf(MdrConstants.OP_BATTERY_GET, 0x00)
+        return MdrFrameEncoder.encode(
+            type = MdrConstants.TYPE_COMMAND_1,
+            seq = seq,
+            payload = payload
+        )
+    }
     }
 
     /**

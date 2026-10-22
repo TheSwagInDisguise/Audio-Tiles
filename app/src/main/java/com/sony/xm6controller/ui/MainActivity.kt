@@ -14,9 +14,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -49,14 +51,23 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import com.sony.xm6controller.domain.BatteryState
+import com.sony.xm6controller.domain.TileCycleScheme
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -182,11 +193,12 @@ fun MainScreen(repository: HeadphoneRepository) {
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_headphones),
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_app_logo),
                             contentDescription = null,
-                            tint = SonyGold,
-                            modifier = Modifier.size(28.dp)
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(RoundedCornerShape(8.dp))
                         )
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
@@ -242,6 +254,7 @@ fun MainScreen(repository: HeadphoneRepository) {
                 DeviceStatusCard(
                     connectionState = connectionState,
                     targetDevice = targetDevice,
+                    batteryState = batteryState,
                     repository = repository,
                     onConnect = { dev ->
                         scope.launch {
@@ -262,6 +275,9 @@ fun MainScreen(repository: HeadphoneRepository) {
                     },
                     onDisconnect = {
                         scope.launch { repository.disconnect() }
+                    },
+                    onRefreshBattery = {
+                        scope.launch { repository.queryBattery() }
                     }
                 )
             }
@@ -313,7 +329,42 @@ fun MainScreen(repository: HeadphoneRepository) {
                 )
             }
 
-            // 4. ColorOS & Oppo Find X9 Ultra Background Optimization Card
+            // 4. Ambient Sound Tuning Controls (Slider 1..20, Presets, Voice Focus)
+            item {
+                AmbientSoundControlsCard(
+                    noiseControlState = noiseControlState,
+                    isConnected = connectionState.isConnected,
+                    onLevelChange = { level ->
+                        scope.launch { repository.setAmbientLevel(level) }
+                    },
+                    onVoiceFocusToggle = { enabled ->
+                        scope.launch { repository.setFocusOnVoice(enabled) }
+                    }
+                )
+            }
+
+            // 5. Wind Noise Reduction Switch
+            item {
+                WindNoiseReductionCard(
+                    windNoiseReduction = noiseControlState.windNoiseReduction,
+                    isConnected = connectionState.isConnected,
+                    onToggle = { enabled ->
+                        scope.launch { repository.setWindNoiseReduction(enabled) }
+                    }
+                )
+            }
+
+            // 6. Quick Settings Tile Cycle Scheme Customization & Power Saver Status
+            item {
+                TileCustomizationCard(
+                    activeScheme = tileCycleScheme,
+                    onSelectScheme = { scheme ->
+                        repository.setTileCycleScheme(scheme)
+                    }
+                )
+            }
+
+            // 7. ColorOS & Oppo Find X9 Ultra Background Optimization Card
             item {
                 ColorOSOptimizationCard(
                     foregroundServiceEnabled = foregroundServiceEnabled,
@@ -330,7 +381,7 @@ fun MainScreen(repository: HeadphoneRepository) {
                 )
             }
 
-            // 5. Live MDR Protocol Diagnostics
+            // 8. Live MDR Protocol Diagnostics
             item {
                 DiagnosticsCard(logs = diagnosticLogs)
             }
@@ -497,9 +548,11 @@ fun PermissionRequestCard(onRequestPermissions: () -> Unit) {
 fun DeviceStatusCard(
     connectionState: ConnectionState,
     targetDevice: BluetoothDevice?,
+    batteryState: BatteryState,
     repository: HeadphoneRepository,
     onConnect: (BluetoothDevice?) -> Unit,
-    onDisconnect: () -> Unit
+    onDisconnect: () -> Unit,
+    onRefreshBattery: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
     val pairedDevices = remember { repository.getPairedDevices() }
@@ -609,6 +662,53 @@ fun DeviceStatusCard(
                     enabled = connectionState.isConnected || connectionState.isConnecting
                 ) {
                     Text("Disconnect")
+                }
+            }
+
+            // Headphone Battery Telemetry Row
+            if (connectionState.isConnected) {
+                Spacer(modifier = Modifier.height(14.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = Color(0xFF4CAF50),
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        val battText = if (batteryState.isAvailable) {
+                            "Battery: ${batteryState.displayString}${if (batteryState.isCharging) " ⚡ (Charging)" else ""}"
+                        } else {
+                            "Battery: Querying telemetry..."
+                        }
+                        Text(
+                            text = battText,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onRefreshBattery,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Refresh,
+                            contentDescription = "Refresh Battery",
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        )
+                    }
                 }
             }
         }
@@ -795,6 +895,244 @@ fun ModeButton(
             modifier = modifier
         ) {
             Text(text = title, fontSize = 13.sp)
+        }
+    }
+}
+
+@Composable
+fun AmbientSoundControlsCard(
+    noiseControlState: NoiseControlState,
+    isConnected: Boolean,
+    onLevelChange: (Int) -> Unit,
+    onVoiceFocusToggle: (Boolean) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, CardBorder, RoundedCornerShape(16.dp)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Ambient Sound Tuning",
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 16.sp
+                )
+                Text(
+                    text = "Level ${noiseControlState.ambientLevel}/20",
+                    fontWeight = FontWeight.Bold,
+                    color = SonyCopper,
+                    fontSize = 14.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Slider(
+                value = noiseControlState.ambientLevel.toFloat(),
+                onValueChange = { onLevelChange(it.toInt()) },
+                valueRange = 1f..20f,
+                steps = 18,
+                enabled = isConnected,
+                colors = SliderDefaults.colors(
+                    thumbColor = SonyCopper,
+                    activeTrackColor = SonyCopper,
+                    inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            )
+
+            // Quick Preset Buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = { onLevelChange(5) },
+                    enabled = isConnected,
+                    modifier = Modifier.weight(1f).height(34.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp, vertical = 2.dp)
+                ) {
+                    Text("Voice (5)", fontSize = 11.sp)
+                }
+                OutlinedButton(
+                    onClick = { onLevelChange(10) },
+                    enabled = isConnected,
+                    modifier = Modifier.weight(1f).height(34.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp, vertical = 2.dp)
+                ) {
+                    Text("Medium (10)", fontSize = 11.sp)
+                }
+                OutlinedButton(
+                    onClick = { onLevelChange(20) },
+                    enabled = isConnected,
+                    modifier = Modifier.weight(1f).height(34.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp, vertical = 2.dp)
+                ) {
+                    Text("Max (20)", fontSize = 11.sp)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Focus on Voice Switch
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Focus on Voice",
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 14.sp
+                    )
+                    Text(
+                        text = "Suppresses background hum while letting speech pass through.",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                }
+                Switch(
+                    checked = noiseControlState.focusOnVoice,
+                    onCheckedChange = onVoiceFocusToggle,
+                    enabled = isConnected
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun WindNoiseReductionCard(
+    windNoiseReduction: Boolean,
+    isConnected: Boolean,
+    onToggle: (Boolean) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, CardBorder, RoundedCornerShape(16.dp)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Wind Noise Reduction",
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 15.sp
+                )
+                Text(
+                    text = "Reduces turbulence buffeting on microphones when outdoors in Noise Cancelling mode.",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Switch(
+                checked = windNoiseReduction,
+                onCheckedChange = onToggle,
+                enabled = isConnected
+            )
+        }
+    }
+}
+
+@Composable
+fun TileCustomizationCard(
+    activeScheme: TileCycleScheme,
+    onSelectScheme: (TileCycleScheme) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, CardBorder, RoundedCornerShape(16.dp)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Quick Settings Tile Cycling",
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp
+            )
+            Text(
+                text = "Choose which modes the Quick Settings Tile toggles between:",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            TileCycleScheme.entries.forEach { scheme ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { onSelectScheme(scheme) }
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = (activeScheme == scheme),
+                        onClick = { onSelectScheme(scheme) }
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Column {
+                        Text(
+                            text = scheme.label,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 14.sp
+                        )
+                        Text(
+                            text = scheme.description,
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Battery conservation note
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFF4CAF50).copy(alpha = 0.1f))
+                    .padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = Color(0xFF4CAF50),
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Smart Power Saver: Socket auto-disconnects after 2 min idle unless Foreground Service is active.",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                )
+            }
         }
     }
 }

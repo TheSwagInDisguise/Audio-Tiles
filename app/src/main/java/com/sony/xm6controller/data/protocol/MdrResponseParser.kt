@@ -73,10 +73,14 @@ object MdrResponseParser {
             MdrConstants.AMBIENT_LEVEL_DEFAULT
         }
 
+        val windByte = if (hasWind) (payload[5].toInt() and 0xFF) else 0
+        val isWindNoiseReduction = (windByte == 3 || windByte == 5)
+
         return NoiseControlState(
             mode = mode,
             ambientLevel = clampedLevel,
             focusOnVoice = (voiceByte == 1),
+            windNoiseReduction = isWindNoiseReduction,
             hasWindByte = hasWind,
             subtype = subtype,
             rawPayload = payload.clone()

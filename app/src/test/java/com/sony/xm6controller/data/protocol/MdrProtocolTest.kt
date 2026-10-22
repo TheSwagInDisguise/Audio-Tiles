@@ -140,4 +140,45 @@ class MdrProtocolTest {
         mode = mode.next()
         assertEquals(NoiseControlMode.NOISE_CANCELLING, mode)
     }
+
+    @Test
+    fun testCycleSchemes() {
+        // NC <-> Ambient scheme
+        val nc = NoiseControlMode.NOISE_CANCELLING
+        val amb = nc.next(com.sony.xm6controller.domain.TileCycleScheme.NC_AMBIENT)
+        assertEquals(NoiseControlMode.AMBIENT_SOUND, amb)
+        val backToNc = amb.next(com.sony.xm6controller.domain.TileCycleScheme.NC_AMBIENT)
+        assertEquals(NoiseControlMode.NOISE_CANCELLING, backToNc)
+
+        // NC <-> Off scheme
+        val off = nc.next(com.sony.xm6controller.domain.TileCycleScheme.NC_OFF)
+        assertEquals(NoiseControlMode.OFF, off)
+        val backFromOff = off.next(com.sony.xm6controller.domain.TileCycleScheme.NC_OFF)
+        assertEquals(NoiseControlMode.NOISE_CANCELLING, backFromOff)
+    }
+
+    @Test
+    fun testBatteryFrameEncoding() {
+        val frame = MdrCommandBuilder.buildGetBatteryFrame(seq = 0)
+        assertTrue(frame.isNotEmpty())
+        assertEquals(MdrConstants.START_BYTE, frame[0])
+        assertEquals(MdrConstants.STOP_BYTE, frame[frame.size - 1])
+
+        val decoder = MdrFrameDecoder()
+        val packets = decoder.feed(frame)
+        assertEquals(1, packets.size)
+        assertEquals(MdrConstants.TYPE_COMMAND_1, packets[0].type)
+        assertEquals(MdrConstants.OP_BATTERY_GET, packets[0].payload[0])
+    }
+
+    @Test
+    fun testWindNoiseReductionState() {
+        val payloadWithWind = byteArrayOf(
+            0x67, 0x17, 0x01, 0x01, 0x00, 0x03, 0x00, 0x01
+        )
+        val state = MdrResponseParser.parseAscState(payloadWithWind)
+        assertNotNull(state)
+        assertTrue(state!!.windNoiseReduction)
+        assertEquals(NoiseControlMode.NOISE_CANCELLING, state.mode)
+    }
 }

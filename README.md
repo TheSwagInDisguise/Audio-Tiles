@@ -24,6 +24,11 @@ Optimized specifically for **ColorOS / Oppo Find X9 Ultra** with dedicated backg
   - Deep links to bypass ColorOS "Auto-launch" restrictions and battery freeze limits.
   - Optional persistent Foreground Service for ultra-fast (&lt;50ms) tile response.
 - **Material 3 Setup & Test Dashboard**:
+  - **Live Battery Telemetry**: Real-time battery percentage badge and USB charging indicator (`0x22`/`0x23` telemetry).
+  - **Ambient Sound Level Tuning**: 1 to 20 slider with quick presets (Voice 5, Balanced 10, Max Awareness 20).
+  - **Focus on Voice & Wind Noise Reduction**: Native hardware toggles for speech enhancement and outdoor microphone buffeting suppression.
+  - **Customizable Quick Settings Schemes**: Choose between 3-way cycle (`NC → Ambient → Off`), 2-way toggle (`NC ↔ Ambient`), or direct (`NC ↔ Off`).
+  - **Smart Idle Power Saver**: Automatically closes idle RFCOMM sockets after 2 minutes when Foreground Service is off, and immediately tears down background connections via `ACTION_ACL_DISCONNECTED` when headphones are powered down.
   - Live Connection Status pill (Disconnected, Connecting, Connected).
   - Target device selector with model auto-filtering (`WH-1000XM6`).
   - Interactive manual buttons for testing protocol modes directly.
