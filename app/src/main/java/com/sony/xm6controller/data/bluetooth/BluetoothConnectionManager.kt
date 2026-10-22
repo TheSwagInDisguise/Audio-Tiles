@@ -1,6 +1,7 @@
 package com.sony.xm6controller.data.bluetooth
 
 import android.annotation.SuppressLint
+import android.app.ActivityManager
 import android.bluetooth.BluetoothDevice
 import android.content.Context
 import android.util.Log
@@ -117,11 +118,23 @@ class BluetoothConnectionManager private constructor(private val context: Contex
         _connectionState.value = ConnectionState.Connecting(deviceName, address)
         addLog("Connecting RFCOMM socket to $deviceName ($address)...")
 
-        val wrapper = BluetoothSocketWrapper(device)
-        val connectResult = wrapper.connect(timeoutMs = 7000L)
+        // Terminate any background Sony Sound Connect / Songpal processes holding the socket
+        try {
+            val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+            am?.killBackgroundProcesses("com.sony.songpal.mdr")
+            am?.killBackgroundProcesses("jp.co.sony.songpal.mdr")
+        } catch (_: Exception) {}
+
+        val wrapper = BluetoothSocketWrapper(device, ::addLog)
+        val connectResult = wrapper.connect(timeoutMs = 14000L)
         if (connectResult.isFailure) {
             val ex = connectResult.exceptionOrNull() ?: IOException("Connection failed")
-            _connectionState.value = ConnectionState.Error("Failed to connect: ${ex.message}")
+            val msg = if (ex.message?.contains("read ret: -1") == true || ex.message?.contains("closed") == true) {
+                "Failed to connect: Headset closed connection (read ret: -1). If Sony Sound Connect is open, force stop it."
+            } else {
+                "Failed to connect: ${ex.message}"
+            }
+            _connectionState.value = ConnectionState.Error(msg)
             addLog("Socket connect failed: ${ex.message}")
             return Result.failure(ex)
         }
@@ -137,21 +150,18 @@ class BluetoothConnectionManager private constructor(private val context: Contex
         addLog("Sending MDR Handshake...")
         val handshakeOk = performHandshake()
         if (!handshakeOk) {
-            disconnectInternal()
-            val ex = IOException("MDR Handshake timed out or rejected by headset.")
-            _connectionState.value = ConnectionState.Error(ex.message ?: "")
-            addLog("Handshake failed.")
-            return Result.failure(ex)
+            addLog("Handshake did not receive response, probing state directly...")
+        } else {
+            addLog("Handshake acknowledged by headset.")
         }
 
-        addLog("Handshake successful! Querying initial noise control state...")
         // Query initial Noise Control State (0x66 0x17)
         val initialAsc = queryNoiseControlInternal()
         if (initialAsc != null) {
             _noiseControlState.value = initialAsc
             addLog("Initial state: ${initialAsc.mode.label} (Level ${initialAsc.ambientLevel})")
         } else {
-            addLog("Warning: Initial ASC query did not respond, defaulting to OFF.")
+            addLog("ASC query not answered yet; ready for commands.")
         }
 
         _connectionState.value = ConnectionState.Connected(deviceName, address)

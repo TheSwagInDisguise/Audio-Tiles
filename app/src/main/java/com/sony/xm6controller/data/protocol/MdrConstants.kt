@@ -59,9 +59,10 @@ object MdrConstants {
     // Standard Bluetooth Serial Port Profile (SPP)
     val UUID_SPP: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
 
-    // Sony MDR Protocol V2 Custom Service UUIDs (WH-1000XM5, WH-1000XM6)
+    // Sony MDR Protocol V2 Custom Service UUIDs (WH-1000XM5, WH-1000XM6, LinkBuds, ULT WEAR)
     val UUID_SONY_V2_PRIMARY: UUID = UUID.fromString("956c7b26-d49a-4ba8-b03f-b17d393cb6e2")
     val UUID_SONY_V2_SECONDARY: UUID = UUID.fromString("956C7B26-B496-4447-AD7B-3A47900D8C86")
+    val UUID_SONY_ALT: UUID = UUID.fromString("ba69e0f5-16e3-2db3-ad46-68503e20cc96")
 
     // Sony MDR Protocol V1 Service UUID (Legacy: WH-1000XM3, WH-1000XM4)
     val UUID_SONY_V1: UUID = UUID.fromString("96cc203e-5068-46ad-b32d-e316f5e069ba")

@@ -15,7 +15,12 @@ Optimized specifically for **ColorOS / Oppo Find X9 Ultra** with dedicated backg
 - **Real-Time Physical Button Sync**: Automatically listens for unsolicited `0x69` notification frames pushed when the physical NC/AMB button on the headset is pressed, updating both the Quick Settings Tile and Compose UI instantaneously.
 - **ColorOS Guardrails for Oppo Find X9 Ultra**:
   - Employs temporary `PowerManager.PARTIAL_WAKE_LOCK` (10s max) during tile taps to guarantee the CPU does not sleep when SystemUI closes the shade.
-  - Multi-tier Bluetooth RFCOMM fallback: Standard SPP &rarr; Sony V2 UUID &rarr; Insecure SPP &rarr; Reflection Channel 1.
+  - **Multi-tier Bluetooth RFCOMM Fallback Engine**:
+    - **Dynamic SDP Inspection**: Queries cached SDP records directly from `device.uuids` to prioritize advertised Sony V2 UUIDs (`956c7b26-d49a-4ba8-b03f-b17d393cb6e2`).
+    - **Insecure RFCOMM Prioritization**: Avoids link-key authentication collisions on paired audio devices running Android 14+ / ColorOS.
+    - **Resource Leak Prevention**: Guaranteed socket descriptor cleanup (`s.close()`) with recovery delay between fallback attempts.
+    - **Direct Channel Reflection**: Falls back to direct RFCOMM channels (1, 2, 8, 9) if SDP service resolution is blocked by OEM firmware.
+    - **Sony Sound Connect Conflict Mitigation**: Informs users and auto-terminates background Songpal/Sound Connect processes that hold exclusive RFCOMM locks.
   - Deep links to bypass ColorOS "Auto-launch" restrictions and battery freeze limits.
   - Optional persistent Foreground Service for ultra-fast (&lt;50ms) tile response.
 - **Material 3 Setup & Test Dashboard**:

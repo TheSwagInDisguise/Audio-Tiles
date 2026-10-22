@@ -6,19 +6,29 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothSocket
 import com.sony.xm6controller.data.protocol.MdrConstants
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
+import java.util.UUID
 
 /**
  * Robust RFCOMM / SPP Socket wrapper for Sony WH-1000XM6.
  *
- * Implements multi-tier connection fallback (Standard SPP -> Sony V2 UUID -> Insecure SPP -> Reflection Channel 1),
- * cancellable coroutine timeouts, and clean stream management.
+ * Implements multi-tier connection fallback:
+ * 1. Dynamic SDP UUID inspection (advertised Sony V2 UUIDs prioritized)
+ * 2. Insecure RFCOMM socket creation (skips redundant MITM auth conflicts on paired audio devices)
+ * 3. Secure RFCOMM socket fallback
+ * 4. Insecure & secure direct RFCOMM channel reflection fallback (channels 1, 2, 8, 9)
+ * 5. Socket descriptor leak prevention (always closes failed socket before retrying)
+ * 6. Inter-attempt teardown delay for Android Bluetooth stack recovery
  */
-class BluetoothSocketWrapper(private val device: BluetoothDevice) {
+class BluetoothSocketWrapper(
+    private val device: BluetoothDevice,
+    private val onLog: ((String) -> Unit)? = null
+) {
 
     private var socket: BluetoothSocket? = null
     var inputStream: InputStream? = null
@@ -29,19 +39,24 @@ class BluetoothSocketWrapper(private val device: BluetoothDevice) {
     val isConnected: Boolean
         get() = socket?.isConnected == true
 
+    private fun log(message: String) {
+        onLog?.invoke(message)
+    }
+
     /**
      * Connects to the Bluetooth device using non-blocking Coroutine I/O with timeout.
      *
-     * @param timeoutMs Timeout in milliseconds for the connection attempt
+     * @param timeoutMs Timeout in milliseconds for the complete multi-tier connection attempt
      */
     @Suppress("DEPRECATION")
     @SuppressLint("MissingPermission")
-    suspend fun connect(timeoutMs: Long = 6000L): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun connect(timeoutMs: Long = 12000L): Result<Unit> = withContext(Dispatchers.IO) {
         // Cancel active discovery to speed up connection and prevent timeouts
         val adapter = BluetoothAdapter.getDefaultAdapter()
         try {
             if (adapter?.isDiscovering == true) {
                 adapter.cancelDiscovery()
+                log("Cancelled active Bluetooth discovery")
             }
         } catch (_: SecurityException) {}
 
@@ -56,57 +71,174 @@ class BluetoothSocketWrapper(private val device: BluetoothDevice) {
         }
     }
 
+    /**
+     * Resolves prioritized UUID candidates based on cached device SDP records and Sony MDR specifications.
+     */
     @SuppressLint("MissingPermission")
-    private fun attemptMultiTierConnect() {
-        val uuidsToTry = listOf(
-            MdrConstants.UUID_SPP,
-            MdrConstants.UUID_SONY_V2_PRIMARY,
-            MdrConstants.UUID_SONY_V2_SECONDARY,
-            MdrConstants.UUID_SONY_V1
+    private fun resolveCandidateUuids(): List<UUID> {
+        val candidates = mutableListOf<UUID>()
+
+        val knownSonyUuids = listOf(
+            MdrConstants.UUID_SONY_V2_PRIMARY,   // 956c7b26-d49a-4ba8-b03f-b17d393cb6e2 (XM5/XM6 standard)
+            MdrConstants.UUID_SONY_ALT,          // ba69e0f5-16e3-2db3-ad46-68503e20cc96
+            MdrConstants.UUID_SONY_V2_SECONDARY, // 956c7b26-b496-4447-ad7b-3a47900d8c86
+            MdrConstants.UUID_SONY_V1            // 96cc203e-5068-46ad-b32d-e316f5e069ba (XM3/XM4 legacy)
         )
 
-        var lastException: Exception? = null
+        val cachedUuids = try {
+            device.uuids?.map { it.uuid } ?: emptyList()
+        } catch (_: SecurityException) {
+            emptyList()
+        }
 
-        // Tier 1 & 2: Standard Secure SPP and Sony Vendor UUIDs
-        for (uuid in uuidsToTry) {
-            try {
-                val s = device.createRfcommSocketToServiceRecord(uuid)
-                s.connect()
-                socket = s
-                inputStream = s.inputStream
-                outputStream = s.outputStream
-                return
-            } catch (e: IOException) {
-                lastException = e
+        if (cachedUuids.isNotEmpty()) {
+            log("Found ${cachedUuids.size} cached SDP UUID(s) on ${device.name ?: "headset"}")
+        }
+
+        // Priority 1: Advertised UUIDs that match known Sony MDR UUIDs
+        for (known in knownSonyUuids) {
+            if (cachedUuids.any { it.toString().equals(known.toString(), ignoreCase = true) }) {
+                candidates.add(known)
+                log("SDP matches Sony MDR service: $known")
             }
         }
 
-        // Tier 3: Insecure RFCOMM with standard SPP (helps on some OEM stacks like ColorOS)
-        try {
-            val s = device.createInsecureRfcommSocketToServiceRecord(MdrConstants.UUID_SPP)
-            s.connect()
-            socket = s
-            inputStream = s.inputStream
-            outputStream = s.outputStream
-            return
-        } catch (e: IOException) {
-            lastException = e
+        // Priority 2: Other cached non-standard 128-bit UUIDs (skipping standard audio/AVRCP/HID profiles)
+        val standardProfiles = setOf(
+            "00001108", // HSP
+            "0000110b", // A2DP Sink
+            "0000110c", // AVRCP Target
+            "0000110e", // AVRCP Controller
+            "0000111e", // HFP
+            "00001200", // PnP
+            "00000000"
+        )
+        for (uuid in cachedUuids) {
+            val str = uuid.toString().lowercase()
+            val isStandard = standardProfiles.any { str.startsWith(it) }
+            if (!isStandard && !candidates.contains(uuid)) {
+                candidates.add(uuid)
+            }
         }
 
-        // Tier 4: Direct Channel Reflection fallback (bypasses SDP cache issues)
-        try {
-            val method = device.javaClass.getMethod("createRfcommSocket", Int::class.javaPrimitiveType)
-            val s = method.invoke(device, 1) as BluetoothSocket
-            s.connect()
-            socket = s
-            inputStream = s.inputStream
-            outputStream = s.outputStream
-            return
-        } catch (e: Exception) {
-            lastException = e
+        // Priority 3: All known Sony MDR UUIDs in standard order
+        for (known in knownSonyUuids) {
+            if (!candidates.contains(known)) {
+                candidates.add(known)
+            }
         }
 
-        throw lastException ?: IOException("Failed to establish RFCOMM connection to ${device.name}")
+        // Priority 4: Generic SPP only as fallback
+        if (!candidates.contains(MdrConstants.UUID_SPP)) {
+            candidates.add(MdrConstants.UUID_SPP)
+        }
+
+        return candidates
+    }
+
+    @SuppressLint("MissingPermission")
+    private suspend fun attemptMultiTierConnect() {
+        val uuidsToTry = resolveCandidateUuids()
+        var lastException: Exception? = null
+
+        // Tiers 1 & 2: Service Record SDP connections (Insecure preferred, Secure fallback)
+        for ((index, uuid) in uuidsToTry.withIndex()) {
+            val shortUuid = uuid.toString().substring(0, 8) + "..."
+
+            // Sub-tier A: Insecure RFCOMM (Essential for Android 14+ on already-bonded A2DP headsets)
+            var socketCandidate: BluetoothSocket? = null
+            try {
+                log("Tier 1.${index + 1}A: Insecure RFCOMM -> $shortUuid")
+                socketCandidate = device.createInsecureRfcommSocketToServiceRecord(uuid)
+                socketCandidate.connect()
+
+                socket = socketCandidate
+                inputStream = socketCandidate.inputStream
+                outputStream = socketCandidate.outputStream
+                log("Connected successfully via Insecure RFCOMM ($shortUuid)")
+                return
+            } catch (e: Exception) {
+                lastException = e
+                try {
+                    socketCandidate?.close()
+                } catch (_: Exception) {}
+                log("Insecure RFCOMM failed ($shortUuid): ${e.message?.take(60)}")
+                delay(120L) // Allow Bluetooth stack to release channel
+            }
+
+            // Sub-tier B: Secure RFCOMM fallback
+            socketCandidate = null
+            try {
+                log("Tier 1.${index + 1}B: Secure RFCOMM -> $shortUuid")
+                socketCandidate = device.createRfcommSocketToServiceRecord(uuid)
+                socketCandidate.connect()
+
+                socket = socketCandidate
+                inputStream = socketCandidate.inputStream
+                outputStream = socketCandidate.outputStream
+                log("Connected successfully via Secure RFCOMM ($shortUuid)")
+                return
+            } catch (e: Exception) {
+                lastException = e
+                try {
+                    socketCandidate?.close()
+                } catch (_: Exception) {}
+                log("Secure RFCOMM failed ($shortUuid): ${e.message?.take(60)}")
+                delay(120L)
+            }
+        }
+
+        // Tier 3: Direct Channel Reflection Fallback (bypasses corrupted SDP caches on OEM ROMs)
+        val channelsToTry = listOf(1, 2, 8, 9)
+        for (channel in channelsToTry) {
+            // Channel Insecure Reflection
+            var reflectionSocket: BluetoothSocket? = null
+            try {
+                log("Tier 3A: Insecure Channel Reflection -> ch $channel")
+                val method = device.javaClass.getMethod("createInsecureRfcommSocket", Int::class.javaPrimitiveType)
+                reflectionSocket = method.invoke(device, channel) as BluetoothSocket
+                reflectionSocket.connect()
+
+                socket = reflectionSocket
+                inputStream = reflectionSocket.inputStream
+                outputStream = reflectionSocket.outputStream
+                log("Connected successfully via Insecure Channel $channel")
+                return
+            } catch (e: Exception) {
+                lastException = e
+                try {
+                    reflectionSocket?.close()
+                } catch (_: Exception) {}
+                delay(100L)
+            }
+
+            // Channel Secure Reflection
+            reflectionSocket = null
+            try {
+                log("Tier 3B: Secure Channel Reflection -> ch $channel")
+                val method = device.javaClass.getMethod("createRfcommSocket", Int::class.javaPrimitiveType)
+                reflectionSocket = method.invoke(device, channel) as BluetoothSocket
+                reflectionSocket.connect()
+
+                socket = reflectionSocket
+                inputStream = reflectionSocket.inputStream
+                outputStream = reflectionSocket.outputStream
+                log("Connected successfully via Secure Channel $channel")
+                return
+            } catch (e: Exception) {
+                lastException = e
+                try {
+                    reflectionSocket?.close()
+                } catch (_: Exception) {}
+                delay(100L)
+            }
+        }
+
+        val hint = if (lastException?.message?.contains("read ret: -1") == true) {
+            " (Headset closed socket. If Sony Sound Connect app is running, force stop it)"
+        } else ""
+
+        throw lastException ?: IOException("Failed to establish RFCOMM connection to ${device.name}$hint")
     }
 
     /**

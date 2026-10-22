@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version tag (e.g. v1.0.0)'
+        description: 'Release version tag (e.g. v1.0.1)'
         required: true
-        default: 'v1.0.0'
+        default: 'v1.0.1'
 
 permissions:
   contents: write
@@ -55,19 +55,31 @@ jobs:
           KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
         run: ./gradlew assembleRelease --no-daemon
 
-      - name: Verify APK Signature & Compute Checksum
-        run: |
-          APK_PATH="app/build/outputs/apk/release/app-release.apk"
-          $ANDROID_HOME/build-tools/34.0.0/apksigner verify --verbose --print-certs "$APK_PATH"
-          sha256sum "$APK_PATH" | tee "app/build/outputs/apk/release/app-release-sha256.txt"
-
-      - name: Rename Release Asset
+      - name: Prepare Clean User-Facing Release Assets
         run: |
           VERSION="${{ github.ref_name }}"
           if [ -z "$VERSION" ] || [ "$VERSION" = "main" ]; then
             VERSION="${{ inputs.version }}"
           fi
-          cp app/build/outputs/apk/release/app-release.apk "app/build/outputs/apk/release/Sony-XM6-NoiseControl-${VERSION}.apk"
+
+          RAW_APK="app/build/outputs/apk/release/app-release.apk"
+          $ANDROID_HOME/build-tools/34.0.0/apksigner verify --verbose --print-certs "$RAW_APK"
+
+          mkdir -p dist
+          FINAL_APK="dist/Sony-XM6-NoiseControl-${VERSION}.apk"
+          cp "$RAW_APK" "$FINAL_APK"
+
+          # Compute SHA-256 for the final named asset
+          (cd dist && sha256sum "Sony-XM6-NoiseControl-${VERSION}.apk" > "Sony-XM6-NoiseControl-${VERSION}-sha256.txt")
+          ls -la dist/
+
+      - name: Cleanup Redundant Release Assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Cleaning up redundant assets from existing releases..."
+          gh release delete-asset v1.0.0 app-release.apk -y || true
+          gh release delete-asset v1.0.0 app-release-sha256.txt -y || true
 
       - name: Create GitHub Release & Upload Assets
         uses: softprops/action-gh-release@v2
@@ -80,15 +92,15 @@ jobs:
             ### 🎧 Sony WH-1000XM6 Quick Settings Noise Control Tile
 
             #### Highlights
-            - **Quick Settings Tile (`TileService`)**: Cycle between Noise Cancelling, Ambient Sound, and Off.
+            - **Quick Settings Tile (`TileService`)**: Cycle between Noise Cancelling, Ambient Sound, and Off directly from the notification shade.
+            - **Resilient Multi-Tier RFCOMM**: Prioritizes cached Sony V2 UUIDs (`956c7b26-d49a-4ba8-b03f-b17d393cb6e2`) with Insecure RFCOMM negotiation (bypasses Android 14+ link-key authentication collisions on paired audio devices) and direct channel reflection fallbacks.
             - **Hardware Sync**: Real-time listening for physical headphone button clicks (`0x69` notification frames).
-            - **ColorOS / Oppo Find X9 Ultra Optimizations**: WakeLock protection during tile interactions, multi-tier RFCOMM fallback, and background battery exemption deep-links.
-            - **Persistent Signing Key**: Built and signed with the official persistent keystore stored in repository secrets. Future updates will install cleanly over existing versions (`INSTALL_FAILED_UPDATE_INCOMPATIBLE` prevented).
+            - **ColorOS / Oppo Find X9 Ultra Optimizations**: WakeLock protection during tile interactions, background battery exemption deep-links, and conflict mitigation for background Songpal/Sound Connect processes.
+            - **Persistent Signing Key**: Built and signed with the official persistent keystore stored in repository secrets. Clean update path (`INSTALL_FAILED_UPDATE_INCOMPATIBLE` prevented).
 
             #### Verification
             - **Certificate SHA-256**: `77:57:BB:B8:9E:01:6F:7B:E4:F0:B6:7E:1A:18:17:3A:D5:DD:44:80:50:DF:B8:E8:15:A5:07:33:B8:51:D5:7D`
             - **Certificate SHA-1**: `39:DE:D8:30:54:BD:DA:9C:4E:83:04:52:10:BB:7E:EF:11:2B:83:3A`
           files: |
-            app/build/outputs/apk/release/Sony-XM6-NoiseControl-*.apk
-            app/build/outputs/apk/release/app-release.apk
-            app/build/outputs/apk/release/app-release-sha256.txt
+            dist/Sony-XM6-NoiseControl-*.apk
+            dist/Sony-XM6-NoiseControl-*-sha256.txt

@@ -3,9 +3,12 @@ package com.sony.xm6controller.ui
 import android.Manifest
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -35,6 +38,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -53,6 +57,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -116,6 +121,22 @@ fun MainScreen(repository: HeadphoneRepository) {
     val diagnosticLogs by repository.diagnosticLogs.collectAsState()
 
     var foregroundServiceEnabled by remember { mutableStateOf(false) }
+
+    val isSongpalInstalled = remember {
+        try {
+            context.packageManager.getPackageInfo("com.sony.songpal.mdr", 0)
+            true
+        } catch (_: Exception) {
+            try {
+                context.packageManager.getPackageInfo("jp.co.sony.songpal.mdr", 0)
+                true
+            } catch (_: Exception) {
+                false
+            }
+        }
+    }
+
+    var connectionErrorDialog by remember { mutableStateOf<String?>(null) }
 
     // Permission handling
     var hasPermissions by remember {
@@ -226,11 +247,16 @@ fun MainScreen(repository: HeadphoneRepository) {
                         scope.launch {
                             val result = repository.connect(dev)
                             if (result.isFailure) {
-                                Toast.makeText(
-                                    context,
-                                    "Connect failed: ${result.exceptionOrNull()?.message}",
-                                    Toast.LENGTH_LONG
-                                ).show()
+                                val msg = result.exceptionOrNull()?.message ?: "Unknown error"
+                                if (msg.contains("read ret: -1") || msg.contains("closed") || msg.contains("timeout") || msg.contains("Failed to establish")) {
+                                    connectionErrorDialog = msg
+                                } else {
+                                    Toast.makeText(
+                                        context,
+                                        "Connect failed: $msg",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
                             }
                         }
                     },
@@ -238,6 +264,29 @@ fun MainScreen(repository: HeadphoneRepository) {
                         scope.launch { repository.disconnect() }
                     }
                 )
+            }
+
+            // Notice card for official Sony Sound Connect conflict if installed
+            if (isSongpalInstalled && !connectionState.isConnected) {
+                item {
+                    SonySoundConnectNoticeCard(
+                        onOpenAppSettings = {
+                            try {
+                                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                    data = Uri.parse("package:com.sony.songpal.mdr")
+                                }
+                                context.startActivity(intent)
+                            } catch (_: Exception) {
+                                try {
+                                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                        data = Uri.parse("package:jp.co.sony.songpal.mdr")
+                                    }
+                                    context.startActivity(intent)
+                                } catch (_: Exception) {}
+                            }
+                        }
+                    )
+                }
             }
 
             // 3. Noise Control Mode Card & Manual Toggles
@@ -287,6 +336,125 @@ fun MainScreen(repository: HeadphoneRepository) {
             }
 
             item { Spacer(modifier = Modifier.height(16.dp)) }
+        }
+
+        if (connectionErrorDialog != null) {
+            AlertDialog(
+                onDismissRequest = { connectionErrorDialog = null },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Connection Rejected", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    }
+                },
+                text = {
+                    Column {
+                        Text(
+                            text = "Headphone rejected or closed the RFCOMM socket.",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Sony WH-1000XM6 only permits ONE app to connect to its control channel at a time.\n\n" +
+                                    "Troubleshooting Steps:\n" +
+                                    "1. If Sony Sound Connect (or Headphones Connect) is running in the background, force stop it.\n" +
+                                    "2. Ensure WH-1000XM6 is connected for phone audio in Bluetooth settings.\n" +
+                                    "3. Tap 'Try Again'.",
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f)
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            val dev = targetDevice
+                            connectionErrorDialog = null
+                            scope.launch {
+                                val res = repository.connect(dev)
+                                if (res.isFailure) {
+                                    connectionErrorDialog = res.exceptionOrNull()?.message
+                                }
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = SonyCopper)
+                    ) {
+                        Text("Try Again")
+                    }
+                },
+                dismissButton = {
+                    Row {
+                        if (isSongpalInstalled) {
+                            TextButton(
+                                onClick = {
+                                    try {
+                                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                            data = Uri.parse("package:com.sony.songpal.mdr")
+                                        }
+                                        context.startActivity(intent)
+                                    } catch (_: Exception) {}
+                                }
+                            ) {
+                                Text("Force Stop Sony App")
+                            }
+                        }
+                        TextButton(onClick = { connectionErrorDialog = null }) {
+                            Text("Dismiss")
+                        }
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun SonySoundConnectNoticeCard(onOpenAppSettings: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, SonyCopper.copy(alpha = 0.5f), RoundedCornerShape(16.dp)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Default.Info,
+                    contentDescription = null,
+                    tint = SonyCopper,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Sony Sound Connect Detected",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "Sony headphones only allow one active app connection to their control channel. If connection fails or times out, please force stop Sony Sound Connect.",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            OutlinedButton(
+                onClick = onOpenAppSettings,
+                modifier = Modifier.height(36.dp)
+            ) {
+                Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("App Info / Force Stop", fontSize = 12.sp)
+            }
         }
     }
 }
