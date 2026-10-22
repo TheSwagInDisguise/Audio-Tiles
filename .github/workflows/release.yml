@@ -1,0 +1,94 @@
+name: Release Signed APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version tag (e.g. v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build Signed Release & Publish
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Decode Signing Keystore from Secrets
+        env:
+          SIGNING_KEY_BASE64: ${{ secrets.SIGNING_KEY }}
+        run: |
+          echo "$SIGNING_KEY_BASE64" | base64 --decode > /tmp/release.jks
+          ls -l /tmp/release.jks
+
+      - name: Run Unit Tests
+        run: ./gradlew testDebugUnitTest --no-daemon
+
+      - name: Build Signed Release APK
+        env:
+          KEYSTORE_PATH: /tmp/release.jks
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Verify APK Signature & Compute Checksum
+        run: |
+          APK_PATH="app/build/outputs/apk/release/app-release.apk"
+          $ANDROID_HOME/build-tools/34.0.0/apksigner verify --verbose --print-certs "$APK_PATH"
+          sha256sum "$APK_PATH" | tee "app/build/outputs/apk/release/app-release-sha256.txt"
+
+      - name: Rename Release Asset
+        run: |
+          VERSION="${{ github.ref_name }}"
+          if [ -z "$VERSION" ] || [ "$VERSION" = "main" ]; then
+            VERSION="${{ inputs.version }}"
+          fi
+          cp app/build/outputs/apk/release/app-release.apk "app/build/outputs/apk/release/Sony-XM6-NoiseControl-${VERSION}.apk"
+
+      - name: Create GitHub Release & Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Sony XM6 Noise Control ${{ github.ref_name || inputs.version }}"
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          body: |
+            ### 🎧 Sony WH-1000XM6 Quick Settings Noise Control Tile
+
+            #### Highlights
+            - **Quick Settings Tile (`TileService`)**: Cycle between Noise Cancelling, Ambient Sound, and Off.
+            - **Hardware Sync**: Real-time listening for physical headphone button clicks (`0x69` notification frames).
+            - **ColorOS / Oppo Find X9 Ultra Optimizations**: WakeLock protection during tile interactions, multi-tier RFCOMM fallback, and background battery exemption deep-links.
+            - **Persistent Signing Key**: Built and signed with the official persistent keystore stored in repository secrets. Future updates will install cleanly over existing versions (`INSTALL_FAILED_UPDATE_INCOMPATIBLE` prevented).
+
+            #### Verification
+            - **Certificate SHA-256**: `77:57:BB:B8:9E:01:6F:7B:E4:F0:B6:7E:1A:18:17:3A:D5:DD:44:80:50:DF:B8:E8:15:A5:07:33:B8:51:D5:7D`
+            - **Certificate SHA-1**: `39:DE:D8:30:54:BD:DA:9C:4E:83:04:52:10:BB:7E:EF:11:2B:83:3A`
+          files: |
+            app/build/outputs/apk/release/Sony-XM6-NoiseControl-*.apk
+            app/build/outputs/apk/release/app-release.apk
+            app/build/outputs/apk/release/app-release-sha256.txt

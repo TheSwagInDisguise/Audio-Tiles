@@ -13,3 +13,4 @@ captures/
 .kotlin/
 .android/
 .sudo_as_admin_successful
+.cache/

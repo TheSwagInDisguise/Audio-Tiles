@@ -175,6 +175,24 @@ MdrProtocolTest > testStrictCyclingOrder PASSED
 
 ---
 
+## 🔐 Release Signing & Seamless App Updates
+
+To ensure that future releases install smoothly as in-place updates over existing installations on your phone without triggering Android's `INSTALL_FAILED_UPDATE_INCOMPATIBLE` error:
+
+- **Persistent Keystore**: A dedicated 2048-bit RSA production keystore (`xm6controller`) valid for 10,000 days (until 2054) is stored securely in **GitHub Repository Secrets**:
+  - `SIGNING_KEY`: Base64-encoded release keystore
+  - `KEY_ALIAS`: `xm6controller`
+  - `KEY_PASSWORD`: Key password
+  - `KEY_STORE_PASSWORD`: Keystore password
+- **Certificate Fingerprints**:
+  - **SHA-256**: `77:57:BB:B8:9E:01:6F:7B:E4:F0:B6:7E:1A:18:17:3A:D5:DD:44:80:50:DF:B8:E8:15:A5:07:33:B8:51:D5:7D`
+  - **SHA-1**: `39:DE:D8:30:54:BD:DA:9C:4E:83:04:52:10:BB:7E:EF:11:2B:83:3A`
+- **Release Automation**:
+  - Every release tag pushed (`git tag v1.0.0 && git push origin v1.0.0`) triggers `.github/workflows/release.yml`.
+  - The workflow builds the signed APK, runs all automated MDR tests, verifies signature validity with `apksigner`, generates SHA-256 checksums, and publishes a new entry under the **GitHub Releases** tab with downloadable APK assets (`Sony-XM6-NoiseControl-vX.X.X.apk`).
+
+---
+
 ## 🔨 Building from Source
 
 ```bash
