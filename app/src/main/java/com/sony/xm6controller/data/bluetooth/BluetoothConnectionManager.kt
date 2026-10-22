@@ -277,7 +277,7 @@ class BluetoothConnectionManager private constructor(private val context: Contex
                     val frame = MdrCommandBuilder.buildSetEqualizerBandsFrame(
                         seq = txSequence,
                         clearBass = 0,
-                        b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0
+                        bands = listOf(0, 0, 0, 0, 0)
                     )
                     sendRawBytes(frame)
                 }
@@ -330,7 +330,7 @@ class BluetoothConnectionManager private constructor(private val context: Contex
         val current = _userPresets.value.toMutableList()
         val newPreset = UserEqPreset(
             name = name.trim(),
-            tenBandGains = tenBandState.bands.map { it.gainDb },
+            tenBandGains = tenBandState.bands,
             clearBass = tenBandState.clearBass
         )
         current.add(0, newPreset)

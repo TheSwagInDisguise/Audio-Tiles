@@ -18,6 +18,7 @@ val TEN_BAND_LABELS = listOf("31", "63", "125", "250", "500", "1k", "2k", "4k", 
  */
 data class TenBandEqState(
     val bands: List<Float> = List(10) { 0.0f }, // Gains at 31, 63, 125, 250, 500, 1k, 2k, 4k, 8k, 16k
+    val clearBass: Int = 0,
     val profileName: String = "Manual",
     val preampDb: Float = 0.0f
 ) {
@@ -27,6 +28,10 @@ data class TenBandEqState(
             next[index] = gainDb.coerceIn(-12.0f, 12.0f)
         }
         return copy(bands = next, profileName = "Custom 10-Band")
+    }
+
+    fun withClearBass(level: Int): TenBandEqState {
+        return copy(clearBass = level.coerceIn(-10, 10))
     }
 
     /**
@@ -40,9 +45,13 @@ data class TenBandEqState(
      * - Band 5: 16.0 kHz (-10 to +10 dB)
      */
     fun toSonyHardwareEq(): SonyHardwareEqMapping {
-        // Clear Bass: derived from 31Hz and 63Hz sub-bass energy
-        val subBassAvg = (bands[0] * 0.6f + bands[1] * 0.4f)
-        val clearBass = subBassAvg.coerceIn(-10f, 10f).toInt()
+        // Clear Bass: use explicit clearBass if set, else derive from 31Hz and 63Hz energy
+        val effectiveClearBass = if (clearBass != 0) {
+            clearBass.coerceIn(-10, 10)
+        } else {
+            val subBassAvg = (bands[0] * 0.6f + bands[1] * 0.4f)
+            subBassAvg.coerceIn(-10f, 10f).toInt()
+        }
 
         // 400 Hz band: interpolated from 250Hz, 500Hz
         val b400 = (bands[3] * 0.4f + bands[4] * 0.6f).coerceIn(-10f, 10f).toInt()
@@ -60,7 +69,7 @@ data class TenBandEqState(
         val b16k = bands[9].coerceIn(-10f, 10f).toInt()
 
         return SonyHardwareEqMapping(
-            clearBass = clearBass,
+            clearBass = effectiveClearBass,
             band400Hz = b400,
             band1kHz = b1k,
             band2_5kHz = b2_5k,
@@ -604,7 +613,7 @@ data class UserEqPreset(
         val bands = tenBandGains.take(10).let { list ->
             if (list.size == 10) list else list + List(10 - list.size) { 0f }
         }
-        return TenBandEqState(bands = bands, profileName = name)
+        return TenBandEqState(bands = bands, clearBass = clearBass, profileName = name)
     }
 
     companion object {
