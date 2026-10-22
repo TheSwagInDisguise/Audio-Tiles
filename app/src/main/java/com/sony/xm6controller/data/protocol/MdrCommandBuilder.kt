@@ -134,7 +134,7 @@ object MdrCommandBuilder {
             }
         }
 
-        val windByte = if (currentState.windNoiseReduction && targetMode == NoiseControlMode.NOISE_CANCELLING) {
+        val windByte = if (currentState?.windNoiseReduction == true && targetMode == NoiseControlMode.NOISE_CANCELLING) {
             MdrConstants.WIND_NOISE_REDUCTION_ON
         } else {
             MdrConstants.WIND_NOISE_REDUCTION_OFF
@@ -162,7 +162,6 @@ object MdrCommandBuilder {
             seq = seq,
             payload = payload
         )
-    }
     }
 
     /**

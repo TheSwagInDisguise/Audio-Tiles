@@ -36,6 +36,7 @@ class XM6ForegroundService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        isServiceRunning = true
         repository = HeadphoneRepository.getInstance(applicationContext)
         createNotificationChannel()
     }
@@ -171,10 +172,15 @@ class XM6ForegroundService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        isServiceRunning = false
         serviceScope.cancel()
     }
 
     companion object {
+        @Volatile
+        var isServiceRunning: Boolean = false
+            private set
+
         const val CHANNEL_ID = "xm6_connection_channel"
         const val NOTIFICATION_ID = 1001
         const val ACTION_START_SERVICE = "com.sony.xm6controller.action.START_SERVICE"

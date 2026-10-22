@@ -67,10 +67,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import com.sony.xm6controller.domain.BatteryState
+import com.sony.xm6controller.domain.NoiseControlState
 import com.sony.xm6controller.domain.TileCycleScheme
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -128,6 +126,8 @@ fun MainScreen(repository: HeadphoneRepository) {
 
     val connectionState by repository.connectionState.collectAsState()
     val noiseControlState by repository.noiseControlState.collectAsState()
+    val batteryState by repository.batteryState.collectAsState()
+    val tileCycleScheme by repository.tileCycleScheme.collectAsState()
     val targetDevice by repository.targetDevice.collectAsState()
     val diagnosticLogs by repository.diagnosticLogs.collectAsState()
 
