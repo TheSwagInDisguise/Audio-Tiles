@@ -287,9 +287,28 @@ class MdrProtocolTest {
     @Test
     fun testAutoEqCatalogAndUserPresets() {
         val catalog = com.sony.xm6controller.domain.AutoEqCatalog.entries
-        assertTrue(catalog.isNotEmpty())
-        val xm5Profile = catalog.find { it.modelName == "WH-1000XM5" }
-        assertNotNull(xm5Profile)
+        assertTrue(catalog.size >= 20)
+
+        // Verify key flagship and popular models exist in catalog
+        val requiredModels = listOf("WH-1000XM6", "WH-1000XM5", "WH-1000XM4", "WF-1000XM5", "WF-1000XM4", "LinkBuds S", "WH-ULT900N", "WH-CH720N")
+        for (model in requiredModels) {
+            val found = catalog.filter { it.modelName == model }
+            assertTrue("Missing catalog entries for $model", found.isNotEmpty())
+        }
+
+        // Verify profile conversion and filter sanity across all catalog profiles
+        for (entry in catalog) {
+            assertTrue(entry.profile.filters.isNotEmpty())
+            val tenBand = entry.profile.sampleToTenBand()
+            assertEquals(10, tenBand.bands.size)
+            val hw = tenBand.toSonyHardwareEq()
+            assertTrue(hw.clearBass in -10..10)
+            assertTrue(hw.band400Hz in -10..10)
+            assertTrue(hw.band1kHz in -10..10)
+            assertTrue(hw.band2_5kHz in -10..10)
+            assertTrue(hw.band6_3kHz in -10..10)
+            assertTrue(hw.band16kHz in -10..10)
+        }
 
         val preset = com.sony.xm6controller.domain.UserEqPreset(
             name = "Test Bass Curve",

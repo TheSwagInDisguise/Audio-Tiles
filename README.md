@@ -26,7 +26,7 @@ It communicates directly with your headset over Bluetooth Classic RFCOMM (SPP) u
 - **10 ISO Center Frequencies**: 31Hz, 63Hz, 125Hz, 250Hz, 500Hz, 1kHz, 2kHz, 4kHz, 8kHz, 16kHz ($\pm 12\text{ dB}$).
 - **Hardware Downsampling**: Automatically downsamples 10-band adjustments and continuous curves to Sony's hardware DSP (Clear Bass + 5 hardware bands: 400Hz, 1kHz, 2.5kHz, 6.3kHz, 16kHz).
 - **A/B Audition (Bypass)**: Toggle between Flat 0 dB and your active EQ profile with one tap to compare sound signatures in real-time.
-- **Built-in AutoEq Catalog**: Instant one-tap compensation curves for WH-1000XM6, XM5, XM4, XM3, WF-1000XM5, WF-1000XM4, LinkBuds, and ULT WEAR (Harman, Oratory1990, Crinacle, Rtings).
+- **Built-in AutoEq & PEQDB Direct Catalog**: 26 pre-computed reference compensation curves directly from official acoustic measurements (oratory1990 GRAS 43AG, Rtings Bruel & Kjaer 5128 anthropomorphic fixtures, Kuulokenurkka, DHRME) covering WH-1000XM6, XM5, XM4, XM3, XM2, MDR-1000X, WF-1000XM5, WF-1000XM4, WF-1000XM3, LinkBuds S, LinkBuds (WF-L900), LinkBuds Fit, ULT WEAR (WH-ULT900N), WH-XB910N, WH-CH720N, WH-CH520, WF-C700N, WF-C500, and WI-1000XM2. Automatically filters to your connected headphone model on launch.
 - **Custom Profile Import**: Load `.peqdb`, JSON, and AutoEq / EqualizerAPO parametric text files.
 - **Local Preset Library**: Save, load, and manage unlimited custom sound profiles locally.
 

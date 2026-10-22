@@ -618,6 +618,7 @@ fun MainScreen(repository: HeadphoneRepository) {
         if (autoEqCatalogVisible) {
             AutoEqCatalogDialog(
                 catalogEntries = repository.autoEqCatalog,
+                connectedModel = deviceCapabilities.modelName,
                 onDismiss = { autoEqCatalogVisible = false },
                 onApplyProfile = { profile ->
                     scope.launch {
@@ -2336,14 +2337,23 @@ fun DiagnosticsCard(
 @Composable
 fun AutoEqCatalogDialog(
     catalogEntries: List<AutoEqCatalogEntry>,
+    connectedModel: String? = null,
     onDismiss: () -> Unit,
     onApplyProfile: (PeqProfile) -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    var selectedModelFilter by remember { mutableStateOf("ALL") }
 
     val models = remember(catalogEntries) {
         listOf("ALL") + catalogEntries.map { it.modelName }.distinct()
+    }
+
+    var selectedModelFilter by remember(connectedModel) {
+        val initial = if (!connectedModel.isNullOrBlank() && models.any { it.equals(connectedModel, ignoreCase = true) }) {
+            models.first { it.equals(connectedModel, ignoreCase = true) }
+        } else {
+            "ALL"
+        }
+        mutableStateOf(initial)
     }
 
     val filtered = remember(searchQuery, selectedModelFilter, catalogEntries) {
