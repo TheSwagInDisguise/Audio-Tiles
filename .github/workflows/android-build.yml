@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   build:
-    name: Build & Verify XM6 Noise Control APK
+    name: Build & Verify Sony Audio Tiles APK
     runs-on: ubuntu-latest
 
     steps:
@@ -40,7 +40,7 @@ jobs:
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: sony-xm6-noise-control-debug-apk
+          name: sony-audio-tiles-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
