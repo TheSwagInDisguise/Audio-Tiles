@@ -23,13 +23,26 @@ class HeadphoneRepository(private val context: Context) {
     val soundFeaturesState: StateFlow<SoundFeaturesState> = connectionManager.soundFeaturesState
     val tileCycleScheme: StateFlow<TileCycleScheme> = connectionManager.tileCycleScheme
     val targetDevice: StateFlow<BluetoothDevice?> = connectionManager.targetDevice
+    val deviceCapabilities: StateFlow<DeviceCapabilities> = connectionManager.deviceCapabilities
+    val isEqBypassed: StateFlow<Boolean> = connectionManager.isEqBypassed
+    val userPresets: StateFlow<List<UserEqPreset>> = connectionManager.userPresets
     val diagnosticLogs: StateFlow<List<String>> = connectionManager.diagnosticLogs
+    val diagnosticEntries: StateFlow<List<com.sony.xm6controller.data.bluetooth.MdrDiagnosticLogEntry>> = connectionManager.diagnosticEntries
+
+    val autoEqCatalog: List<AutoEqCatalogEntry> = AutoEqCatalog.entries
 
     fun isBluetoothAvailable(): Boolean = scanner.isBluetoothEnabled()
     fun hasBluetoothPermission(): Boolean = scanner.hasBluetoothPermission()
     fun getPairedDevices(): List<BluetoothDevice> = scanner.getPairedDevices()
     fun refreshTargetDevice(preferredAddress: String? = null) = connectionManager.refreshTargetDevice(preferredAddress)
     fun setTileCycleScheme(scheme: TileCycleScheme) = connectionManager.setTileCycleScheme(scheme)
+
+    fun exportDiagnosticReport(): String = connectionManager.exportDiagnosticReport()
+    fun clearDiagnosticLogs() = connectionManager.clearDiagnosticLogs()
+    fun toggleEqBypass() = connectionManager.toggleEqBypass()
+    fun saveUserPreset(name: String, state: TenBandEqState) = connectionManager.saveUserPreset(name, state)
+    fun deleteUserPreset(presetId: String) = connectionManager.deleteUserPreset(presetId)
+    fun loadUserPresets(): List<UserEqPreset> = connectionManager.loadUserPresets()
 
     suspend fun connect(target: BluetoothDevice? = null): Result<Unit> {
         return connectionManager.connect(target)

@@ -392,3 +392,253 @@ object PeqParser {
         )
     )
 }
+
+/**
+ * Built-in AutoEq Catalog entry representing indexed measurement compensations.
+ */
+data class AutoEqCatalogEntry(
+    val id: String,
+    val modelName: String,
+    val targetName: String,
+    val labSource: String,
+    val description: String,
+    val profile: PeqProfile
+)
+
+/**
+ * Indexed catalog of AutoEq measurement profiles for top Sony headphones and earbuds.
+ */
+object AutoEqCatalog {
+    val entries: List<AutoEqCatalogEntry> = listOf(
+        AutoEqCatalogEntry(
+            id = "wh1000xm6_harman",
+            modelName = "WH-1000XM6",
+            targetName = "Harman Over-Ear Target",
+            labSource = "Acoustic Target Lab",
+            description = "Sub-bass elevation, balanced 250Hz warmth, refined pinna gain at 3.2kHz",
+            profile = PeqProfile(
+                name = "WH-1000XM6 Harman",
+                preampDb = -4.5f,
+                filters = listOf(
+                    PeqFilter(PeqFilterType.LOW_SHELF, 75f, 5.5f, 0.71f),
+                    PeqFilter(PeqFilterType.PEAK, 220f, -2.5f, 1.4f),
+                    PeqFilter(PeqFilterType.PEAK, 1100f, 1.8f, 1.6f),
+                    PeqFilter(PeqFilterType.PEAK, 3200f, 4.2f, 1.8f),
+                    PeqFilter(PeqFilterType.PEAK, 6500f, -1.5f, 2.0f),
+                    PeqFilter(PeqFilterType.HIGH_SHELF, 10000f, 1.5f, 0.71f)
+                )
+            )
+        ),
+        AutoEqCatalogEntry(
+            id = "wh1000xm5_oratory",
+            modelName = "WH-1000XM5",
+            targetName = "Harman Over-Ear (Oratory1990)",
+            labSource = "Oratory1990",
+            description = "Tames 180Hz mid-bass bloat and smooths upper treble response",
+            profile = PeqProfile(
+                name = "WH-1000XM5 Oratory1990",
+                preampDb = -4.0f,
+                filters = listOf(
+                    PeqFilter(PeqFilterType.LOW_SHELF, 85f, 4.5f, 0.71f),
+                    PeqFilter(PeqFilterType.PEAK, 190f, -3.2f, 1.2f),
+                    PeqFilter(PeqFilterType.PEAK, 1250f, 1.5f, 1.5f),
+                    PeqFilter(PeqFilterType.PEAK, 3100f, 3.8f, 1.9f),
+                    PeqFilter(PeqFilterType.PEAK, 6200f, -2.0f, 2.5f)
+                )
+            )
+        ),
+        AutoEqCatalogEntry(
+            id = "wh1000xm5_rtings",
+            modelName = "WH-1000XM5",
+            targetName = "Rtings Neutral Target",
+            labSource = "Rtings.com",
+            description = "Neutral studio mastering curve with linear midrange transition",
+            profile = PeqProfile(
+                name = "WH-1000XM5 Rtings",
+                preampDb = -3.5f,
+                filters = listOf(
+                    PeqFilter(PeqFilterType.LOW_SHELF, 90f, 3.8f, 0.71f),
+                    PeqFilter(PeqFilterType.PEAK, 250f, -2.0f, 1.1f),
+                    PeqFilter(PeqFilterType.PEAK, 2800f, 3.2f, 1.7f),
+                    PeqFilter(PeqFilterType.PEAK, 7800f, -1.8f, 2.0f)
+                )
+            )
+        ),
+        AutoEqCatalogEntry(
+            id = "wh1000xm4_oratory",
+            modelName = "WH-1000XM4",
+            targetName = "Harman Over-Ear (Oratory1990)",
+            labSource = "Oratory1990",
+            description = "Massive reduction in 200Hz muddiness with extended sub-bass rumble",
+            profile = PeqProfile(
+                name = "WH-1000XM4 Oratory1990",
+                preampDb = -5.0f,
+                filters = listOf(
+                    PeqFilter(PeqFilterType.LOW_SHELF, 70f, 6.0f, 0.71f),
+                    PeqFilter(PeqFilterType.PEAK, 210f, -4.5f, 1.0f),
+                    PeqFilter(PeqFilterType.PEAK, 1050f, 2.0f, 1.4f),
+                    PeqFilter(PeqFilterType.PEAK, 2900f, 4.5f, 1.8f),
+                    PeqFilter(PeqFilterType.PEAK, 6800f, -2.2f, 2.2f)
+                )
+            )
+        ),
+        AutoEqCatalogEntry(
+            id = "wh1000xm3_oratory",
+            modelName = "WH-1000XM3",
+            targetName = "Harman Over-Ear (Oratory1990)",
+            labSource = "Oratory1990",
+            description = "Controls XM3 warm bass response and restores vocal presence",
+            profile = PeqProfile(
+                name = "WH-1000XM3 Oratory1990",
+                preampDb = -5.5f,
+                filters = listOf(
+                    PeqFilter(PeqFilterType.LOW_SHELF, 75f, 5.0f, 0.71f),
+                    PeqFilter(PeqFilterType.PEAK, 180f, -5.0f, 0.9f),
+                    PeqFilter(PeqFilterType.PEAK, 1150f, 2.2f, 1.5f),
+                    PeqFilter(PeqFilterType.PEAK, 3000f, 4.8f, 1.7f),
+                    PeqFilter(PeqFilterType.HIGH_SHELF, 8500f, 1.8f, 0.71f)
+                )
+            )
+        ),
+        AutoEqCatalogEntry(
+            id = "wf1000xm5_crinacle",
+            modelName = "WF-1000XM5",
+            targetName = "Harman In-Ear 2019 (Crinacle)",
+            labSource = "Crinacle",
+            description = "Tight ear-canal target with punchy sub-bass and pristine vocal imaging",
+            profile = PeqProfile(
+                name = "WF-1000XM5 Crinacle",
+                preampDb = -4.2f,
+                filters = listOf(
+                    PeqFilter(PeqFilterType.LOW_SHELF, 80f, 5.0f, 0.71f),
+                    PeqFilter(PeqFilterType.PEAK, 320f, -2.2f, 1.3f),
+                    PeqFilter(PeqFilterType.PEAK, 2700f, 3.8f, 1.6f),
+                    PeqFilter(PeqFilterType.PEAK, 5800f, -2.5f, 2.5f),
+                    PeqFilter(PeqFilterType.HIGH_SHELF, 9500f, 2.0f, 0.71f)
+                )
+            )
+        ),
+        AutoEqCatalogEntry(
+            id = "wf1000xm4_oratory",
+            modelName = "WF-1000XM4",
+            targetName = "Harman In-Ear (Oratory1990)",
+            labSource = "Oratory1990",
+            description = "Compensates for 6kHz sibilance and tightens low-end bass attack",
+            profile = PeqProfile(
+                name = "WF-1000XM4 Oratory1990",
+                preampDb = -4.0f,
+                filters = listOf(
+                    PeqFilter(PeqFilterType.LOW_SHELF, 90f, 4.5f, 0.71f),
+                    PeqFilter(PeqFilterType.PEAK, 280f, -1.8f, 1.2f),
+                    PeqFilter(PeqFilterType.PEAK, 2600f, 3.5f, 1.7f),
+                    PeqFilter(PeqFilterType.PEAK, 6100f, -3.2f, 2.8f)
+                )
+            )
+        ),
+        AutoEqCatalogEntry(
+            id = "linkbuds_s_harman",
+            modelName = "LinkBuds S",
+            targetName = "Harman In-Ear Target",
+            labSource = "AutoEq Curated",
+            description = "Linearizes LinkBuds S upper treble and adds controlled sub-bass",
+            profile = PeqProfile(
+                name = "LinkBuds S Harman",
+                preampDb = -3.8f,
+                filters = listOf(
+                    PeqFilter(PeqFilterType.LOW_SHELF, 85f, 4.2f, 0.71f),
+                    PeqFilter(PeqFilterType.PEAK, 350f, -1.5f, 1.4f),
+                    PeqFilter(PeqFilterType.PEAK, 2800f, 3.2f, 1.5f),
+                    PeqFilter(PeqFilterType.PEAK, 7200f, -1.8f, 2.2f)
+                )
+            )
+        ),
+        AutoEqCatalogEntry(
+            id = "ult900n_clarity",
+            modelName = "WH-ULT900N",
+            targetName = "Vocal Clarity & Controlled Bass",
+            labSource = "Sound Connect Lab",
+            description = "Tames extreme ULT bass resonance and brings vocals and instruments forward",
+            profile = PeqProfile(
+                name = "ULT900N Vocal Clarity",
+                preampDb = -5.0f,
+                filters = listOf(
+                    PeqFilter(PeqFilterType.PEAK, 120f, -4.5f, 1.2f),
+                    PeqFilter(PeqFilterType.PEAK, 250f, -3.5f, 1.5f),
+                    PeqFilter(PeqFilterType.PEAK, 1500f, 2.5f, 1.4f),
+                    PeqFilter(PeqFilterType.PEAK, 3500f, 4.0f, 1.8f),
+                    PeqFilter(PeqFilterType.HIGH_SHELF, 8000f, 2.0f, 0.71f)
+                )
+            )
+        ),
+        AutoEqCatalogEntry(
+            id = "ch720n_harman",
+            modelName = "WH-CH720N",
+            targetName = "Harman Neutral Target",
+            labSource = "Oratory1990",
+            description = "Flattens midrange dip and controls 8kHz treble peak",
+            profile = PeqProfile(
+                name = "WH-CH720N Harman",
+                preampDb = -3.5f,
+                filters = listOf(
+                    PeqFilter(PeqFilterType.LOW_SHELF, 80f, 3.8f, 0.71f),
+                    PeqFilter(PeqFilterType.PEAK, 400f, -1.5f, 1.5f),
+                    PeqFilter(PeqFilterType.PEAK, 2800f, 3.0f, 1.8f),
+                    PeqFilter(PeqFilterType.PEAK, 8200f, -2.5f, 2.5f)
+                )
+            )
+        )
+    )
+}
+
+/**
+ * User-created custom Equalizer preset stored in local device storage.
+ */
+data class UserEqPreset(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    val name: String,
+    val tenBandGains: List<Float>,
+    val clearBass: Int,
+    val createdAt: Long = System.currentTimeMillis()
+) {
+    fun toTenBandEqState(): TenBandEqState {
+        val bands = tenBandGains.mapIndexed { idx, gain ->
+            TenBand(idx, TenBand.ISO_FREQUENCIES.getOrElse(idx) { 1000 }, gain)
+        }
+        return TenBandEqState(bands = bands, clearBass = clearBass)
+    }
+
+    companion object {
+        val DEFAULT_PRESETS = listOf(
+            UserEqPreset(
+                id = "default_neutral",
+                name = "Studio Reference Flat",
+                tenBandGains = List(10) { 0.0f },
+                clearBass = 0
+            ),
+            UserEqPreset(
+                id = "default_harman",
+                name = "Harman Balanced",
+                tenBandGains = listOf(6.0f, 5.0f, 3.0f, 0.0f, -1.0f, 0.5f, 3.5f, 7.0f, 2.0f, -1.0f),
+                clearBass = 5
+            ),
+            UserEqPreset(
+                id = "default_basshead",
+                name = "Basshead 808 Slam",
+                tenBandGains = listOf(10.0f, 9.0f, 7.0f, 3.5f, 1.0f, -1.0f, 0.0f, 1.5f, 2.0f, 3.0f),
+                clearBass = 9
+            ),
+            UserEqPreset(
+                id = "default_vocal",
+                name = "Vocal Clarity & Podcasts",
+                tenBandGains = listOf(-1.0f, -1.0f, 0.0f, 1.5f, 2.5f, 3.5f, 4.0f, 2.0f, 1.0f, 0.0f),
+                clearBass = 0
+            ),
+            UserEqPreset(
+                id = "default_cinema",
+                name = "Cinematic Immersion",
+                tenBandGains = listOf(7.0f, 6.0f, 3.0f, -0.5f, -1.0f, 1.0f, 3.0f, 5.0f, 4.0f, 2.0f),
+                clearBass = 6
+            )
+        )
+    }
+}

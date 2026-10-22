@@ -79,11 +79,9 @@ jobs:
           mkdir -p dist
           FINAL_APK="dist/Sony-Audio-Tiles-${VERSION}.apk"
           cp "$RAW_APK" "$FINAL_APK"
-          cp "$RAW_APK" "dist/Sony-XM6-NoiseControl-${VERSION}.apk"
 
-          # Compute SHA-256 for release assets
+          # Compute SHA-256 for release asset
           (cd dist && sha256sum "Sony-Audio-Tiles-${VERSION}.apk" > "Sony-Audio-Tiles-${VERSION}-sha256.txt")
-          (cd dist && sha256sum "Sony-XM6-NoiseControl-${VERSION}.apk" > "Sony-XM6-NoiseControl-${VERSION}-sha256.txt")
           ls -la dist/
 
       - name: Cleanup Redundant Release Assets
@@ -107,9 +105,10 @@ jobs:
             #### Highlights
             - **Universal Sony Ecosystem**: Seamless support for WH-1000XM6, WH-1000XM5, WH-1000XM4, WH-1000XM3, WF-1000XM5, WF-1000XM4, LinkBuds, ULT WEAR, and WH-CH720N.
             - **10-Band Graphic Equalizer with Live Spline Curve**: ISO center frequencies (31Hz to 16kHz) with intelligent downsampling to Sony hardware DSP.
-            - **PEQDB & AutoEq Profile Import**: Load parametric EQ curves (.peqdb, .json, .txt) with biquad filter transfer function modeling.
-            - **Multi-Cell TWS Battery Telemetry**: Separate real-time monitoring for Left earbud, Right earbud, and Charging Case.
-            - **Full Sound Connect Parity**: Speak-to-Chat, DSEE Extreme AI upscaling, wear detection auto-pause, auto power-off timer, touch sensor toggles, and LDAC quality priority.
+            - **PEQDB & AutoEq Catalog Search**: Load parametric EQ curves (.peqdb, .json, .txt) with biquad filter transfer function modeling and built-in headphone database.
+            - **Real-Time MDR Diagnostics & Dump Export**: Comprehensive packet inspector with one-tap export for rapid troubleshooting.
+            - **Model Capability Discovery**: Automatic hardware feature detection and UI adaptation.
+            - **Local Preset Library & A/B Bypass Audition**: Save unlimited custom sound profiles and compare against flat bypass instantly.
             - **Sub-50ms Quick Settings Tile (`TileService`)**: Non-blocking noise mode cycling from notification shade.
             - **ColorOS Guardrails**: Insecure RFCOMM negotiation and 120s Smart Power Saver.
 
@@ -119,5 +118,3 @@ jobs:
           files: |
             dist/Sony-Audio-Tiles-*.apk
             dist/Sony-Audio-Tiles-*-sha256.txt
-            dist/Sony-XM6-NoiseControl-*.apk
-            dist/Sony-XM6-NoiseControl-*-sha256.txt

@@ -264,4 +264,41 @@ class MdrProtocolTest {
         assertEquals(-3.2f, jsonProfile.preampDb)
         assertEquals(2, jsonProfile.filters.size)
     }
+
+    @Test
+    fun testDeviceCapabilitiesResolution() {
+        val xm6 = com.sony.xm6controller.domain.DeviceCapabilities.resolve("WH-1000XM6")
+        assertEquals(com.sony.xm6controller.domain.DeviceFamily.OVER_EAR_FLAGSHIP, xm6.family)
+        assertTrue(xm6.hasSpeakToChat)
+        assertTrue(xm6.hasDsee)
+        assertFalse(xm6.hasMultiBattery)
+
+        val xm3 = com.sony.xm6controller.domain.DeviceCapabilities.resolve("WH-1000XM3")
+        assertFalse(xm3.hasSpeakToChat) // XM3 does not have Speak-to-Chat
+
+        val tws = com.sony.xm6controller.domain.DeviceCapabilities.resolve("WF-1000XM5")
+        assertEquals(com.sony.xm6controller.domain.DeviceFamily.TWS_FLAGSHIP, tws.family)
+        assertTrue(tws.hasMultiBattery)
+
+        val ult = com.sony.xm6controller.domain.DeviceCapabilities.resolve("WH-ULT900N")
+        assertEquals(com.sony.xm6controller.domain.DeviceFamily.BASS_SERIES, ult.family)
+    }
+
+    @Test
+    fun testAutoEqCatalogAndUserPresets() {
+        val catalog = com.sony.xm6controller.domain.AutoEqCatalog.entries
+        assertTrue(catalog.isNotEmpty())
+        val xm5Profile = catalog.find { it.modelName == "WH-1000XM5" }
+        assertNotNull(xm5Profile)
+
+        val preset = com.sony.xm6controller.domain.UserEqPreset(
+            name = "Test Bass Curve",
+            tenBandGains = listOf(8f, 7f, 5f, 2f, 0f, 0f, 1f, 2f, 2f, 1f),
+            clearBass = 7
+        )
+        val state = preset.toTenBandEqState()
+        assertEquals(7, state.clearBass)
+        assertEquals(10, state.bands.size)
+        assertEquals(8f, state.bands[0].gainDb)
+    }
 }

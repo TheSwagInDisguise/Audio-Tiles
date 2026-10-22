@@ -42,8 +42,24 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.IOException
 
+enum class LogDirection {
+    TX, RX, ACK_TX, ACK_RX, INFO, WARN, ERROR
+}
+
+data class MdrDiagnosticLogEntry(
+    val id: Long = System.nanoTime(),
+    val timestampMs: Long = System.currentTimeMillis(),
+    val timeFormatted: String,
+    val direction: LogDirection,
+    val opcode: Int? = null,
+    val opcodeName: String = "",
+    val rawHex: String = "",
+    val payloadHex: String = "",
+    val note: String = ""
+)
+
 /**
- * Singleton Bluetooth Connection & Session Manager for Sony WH-1000XM6.
+ * Singleton Bluetooth Connection & Session Manager for Sony Headphones and Earbuds.
  *
  * Coordinates:
  * - Thread-safe RFCOMM socket lifecycle with multi-tier fallback
@@ -98,12 +114,25 @@ class BluetoothConnectionManager private constructor(private val context: Contex
     private val _targetDevice = MutableStateFlow<BluetoothDevice?>(null)
     val targetDevice: StateFlow<BluetoothDevice?> = _targetDevice.asStateFlow()
 
+    private val _deviceCapabilities = MutableStateFlow(DeviceCapabilities())
+    val deviceCapabilities: StateFlow<DeviceCapabilities> = _deviceCapabilities.asStateFlow()
+
+    private val _isEqBypassed = MutableStateFlow(false)
+    val isEqBypassed: StateFlow<Boolean> = _isEqBypassed.asStateFlow()
+
+    private val _userPresets = MutableStateFlow<List<UserEqPreset>>(UserEqPreset.DEFAULT_PRESETS)
+    val userPresets: StateFlow<List<UserEqPreset>> = _userPresets.asStateFlow()
+
     private val _diagnosticLogs = MutableStateFlow<List<String>>(emptyList())
     val diagnosticLogs: StateFlow<List<String>> = _diagnosticLogs.asStateFlow()
+
+    private val _diagnosticEntries = MutableStateFlow<List<MdrDiagnosticLogEntry>>(emptyList())
+    val diagnosticEntries: StateFlow<List<MdrDiagnosticLogEntry>> = _diagnosticEntries.asStateFlow()
 
     init {
         // Initial target scan
         refreshTargetDevice()
+        loadUserPresets()
         registerBluetoothAclReceiver()
     }
 
@@ -112,9 +141,11 @@ class BluetoothConnectionManager private constructor(private val context: Contex
         addLog("Tile cycle scheme changed to: ${scheme.label}")
     }
 
+    @SuppressLint("MissingPermission")
     fun refreshTargetDevice(preferredAddress: String? = null) {
         val dev = deviceScanner.findTargetDevice(preferredAddress)
         _targetDevice.value = dev
+        _deviceCapabilities.value = DeviceCapabilities.resolve(dev?.name)
     }
 
     private fun addLog(message: String) {
@@ -122,10 +153,210 @@ class BluetoothConnectionManager private constructor(private val context: Contex
         val current = _diagnosticLogs.value.toMutableList()
         val timestamp = java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.US).format(java.util.Date())
         current.add("[$timestamp] $message")
-        if (current.size > 50) {
+        if (current.size > 200) {
             current.removeAt(0)
         }
         _diagnosticLogs.value = current
+    }
+
+    fun logDiagnostic(
+        direction: LogDirection,
+        opcode: Int? = null,
+        opcodeName: String = "",
+        rawHex: String = "",
+        payloadHex: String = "",
+        note: String = ""
+    ) {
+        val timestamp = java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.US).format(java.util.Date())
+        val entry = MdrDiagnosticLogEntry(
+            timeFormatted = timestamp,
+            direction = direction,
+            opcode = opcode,
+            opcodeName = opcodeName,
+            rawHex = rawHex,
+            payloadHex = payloadHex,
+            note = note
+        )
+        val curEntries = _diagnosticEntries.value.toMutableList()
+        curEntries.add(entry)
+        if (curEntries.size > 200) {
+            curEntries.removeAt(0)
+        }
+        _diagnosticEntries.value = curEntries
+
+        val summary = buildString {
+            append("[${direction.name}] ")
+            if (opcodeName.isNotEmpty()) append("$opcodeName ")
+            if (payloadHex.isNotEmpty()) append("[$payloadHex] ")
+            if (note.isNotEmpty()) append(note)
+        }
+        addLog(summary)
+    }
+
+    fun clearDiagnosticLogs() {
+        _diagnosticLogs.value = emptyList()
+        _diagnosticEntries.value = emptyList()
+        logDiagnostic(LogDirection.INFO, note = "Diagnostic logs cleared by user")
+    }
+
+    @SuppressLint("MissingPermission")
+    fun exportDiagnosticReport(): String {
+        val dev = _targetDevice.value
+        val caps = _deviceCapabilities.value
+        val conn = _connectionState.value
+        val nc = _noiseControlState.value
+        val bat = _batteryState.value
+        val eq = _tenBandEqState.value
+        val bypass = _isEqBypassed.value
+        val logs = _diagnosticEntries.value
+
+        return buildString {
+            appendLine("==================================================")
+            appendLine("       SONY AUDIO TILES DIAGNOSTIC DUMP REPORT     ")
+            appendLine("==================================================")
+            appendLine("Generated At: ${java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ", java.util.Locale.US).format(java.util.Date())}")
+            appendLine("App Version: 1.1.0 (Code 4)")
+            appendLine("Android OS: Android ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})")
+            appendLine("Device Hardware: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL} (${android.os.Build.DEVICE})")
+            appendLine()
+            appendLine("--- TARGET HEADSET & HARDWARE CAPABILITIES ---")
+            appendLine("Device Name: ${dev?.name ?: "None"}")
+            appendLine("Device Address: ${dev?.address ?: "N/A"}")
+            appendLine("Resolved Model: ${caps.modelName} (${caps.family.displayName})")
+            appendLine("Capabilities:")
+            appendLine("  - Speak-to-Chat Hardware: ${caps.hasSpeakToChat}")
+            appendLine("  - DSEE AI Audio Upscaling: ${caps.hasDsee}")
+            appendLine("  - Wind Buffeting Suppression: ${caps.hasWindNoiseReduction}")
+            appendLine("  - Sony Clear Bass Subwoofer: ${caps.hasClearBass}")
+            appendLine("  - Multi-Cell Battery (TWS L/R/Case): ${caps.hasMultiBattery}")
+            appendLine("  - Optical Proximity / Wearing Sensor: ${caps.hasWearingDetection}")
+            appendLine("  - Capacitive Touch Gesture Controls: ${caps.hasTouchSensorControl}")
+            appendLine()
+            appendLine("--- ACTIVE TELEMETRY & SOUND PROFILE ---")
+            appendLine("Connection Status: ${conn::class.simpleName}")
+            appendLine("Noise Control Mode: ${nc.mode.label} (Level ${nc.ambientLevel}, Voice Focus: ${nc.focusOnVoice})")
+            appendLine("Battery Status: ${bat.displayString}")
+            appendLine("EQ Bypass Active (A/B Test): $bypass")
+            appendLine("Clear Bass Level: ${eq.clearBass}")
+            appendLine("10-Band EQ Frequencies & Gains:")
+            eq.bands.forEach { b ->
+                appendLine("    ${b.frequencyHz.toString().padEnd(6)} Hz : ${if (b.gainDb >= 0) "+" else ""}${b.gainDb} dB")
+            }
+            appendLine()
+            appendLine("--- RECENT MDR PACKET STREAM (Last ${logs.size} Events) ---")
+            for (log in logs) {
+                appendLine("[${log.timeFormatted}] [${log.direction.name.padEnd(6)}] " +
+                    (if (log.opcodeName.isNotEmpty()) "${log.opcodeName.padEnd(16)} | " else "") +
+                    (if (log.payloadHex.isNotEmpty()) "Payload: ${log.payloadHex} | " else "") +
+                    log.note)
+                if (log.rawHex.isNotEmpty() && log.rawHex != log.payloadHex) {
+                    appendLine("         Raw Wire: ${log.rawHex}")
+                }
+            }
+            appendLine("==================================================")
+            appendLine("             END OF DIAGNOSTIC REPORT             ")
+            appendLine("==================================================")
+        }
+    }
+
+    /**
+     * Toggles A/B Audition Bypass: sends Flat 0dB to headset DSP momentarily
+     * or restores the active 10-band profile.
+     */
+    fun toggleEqBypass() {
+        val newBypass = !_isEqBypassed.value
+        _isEqBypassed.value = newBypass
+        scope.launch {
+            if (newBypass) {
+                logDiagnostic(LogDirection.INFO, opcodeName = "A/B_BYPASS", note = "A/B Audition: EQ Bypassed (Flat 0dB sent to hardware DSP)")
+                val flatPayload = byteArrayOf(0x58.toByte(), 0x00, 0xA0.toByte(), 0x06, 10, 10, 10, 10, 10, 10)
+                sendCustomPayload("SET_EQ_BYPASS", flatPayload)
+            } else {
+                logDiagnostic(LogDirection.INFO, opcodeName = "A/B_RESTORE", note = "A/B Audition: EQ Restored to active 10-band profile")
+                applyTenBandEq(_tenBandEqState.value)
+            }
+        }
+    }
+
+    // --- User Preset Persistence ---
+    private val PREFS_PRESETS = "sony_audio_tiles_presets"
+    private val KEY_SAVED_PRESETS = "user_presets_json"
+
+    fun loadUserPresets(): List<UserEqPreset> {
+        val prefs = context.getSharedPreferences(PREFS_PRESETS, Context.MODE_PRIVATE)
+        val rawJson = prefs.getString(KEY_SAVED_PRESETS, null)
+        if (rawJson.isNullOrEmpty()) {
+            _userPresets.value = UserEqPreset.DEFAULT_PRESETS
+            return UserEqPreset.DEFAULT_PRESETS
+        }
+        return try {
+            val arr = org.json.JSONArray(rawJson)
+            val list = mutableListOf<UserEqPreset>()
+            for (i in 0 until arr.length()) {
+                val o = arr.getJSONObject(i)
+                val id = o.optString("id", java.util.UUID.randomUUID().toString())
+                val name = o.optString("name", "Preset $i")
+                val cb = o.optInt("clearBass", 0)
+                val gainsArr = o.optJSONArray("gains")
+                val gains = mutableListOf<Float>()
+                if (gainsArr != null) {
+                    for (j in 0 until gainsArr.length()) {
+                        gains.add(gainsArr.optDouble(j, 0.0).toFloat())
+                    }
+                } else {
+                    gains.addAll(List(10) { 0.0f })
+                }
+                list.add(UserEqPreset(id, name, gains, cb))
+            }
+            if (list.isEmpty()) UserEqPreset.DEFAULT_PRESETS else list
+        } catch (_: Throwable) {
+            UserEqPreset.DEFAULT_PRESETS
+        }.also {
+            _userPresets.value = it
+        }
+    }
+
+    fun saveUserPreset(name: String, tenBandState: TenBandEqState) {
+        val current = _userPresets.value.toMutableList()
+        val newPreset = UserEqPreset(
+            name = name.trim(),
+            tenBandGains = tenBandState.bands.map { it.gainDb },
+            clearBass = tenBandState.clearBass
+        )
+        current.add(0, newPreset)
+        _userPresets.value = current
+        persistUserPresets(current)
+        logDiagnostic(LogDirection.INFO, note = "Saved custom user preset: \"${name.trim()}\"")
+    }
+
+    fun deleteUserPreset(presetId: String) {
+        val current = _userPresets.value.toMutableList()
+        current.removeAll { it.id == presetId }
+        _userPresets.value = current
+        persistUserPresets(current)
+        logDiagnostic(LogDirection.INFO, note = "Deleted custom preset ID: $presetId")
+    }
+
+    private fun persistUserPresets(presets: List<UserEqPreset>) {
+        scope.launch(Dispatchers.IO) {
+            try {
+                val arr = org.json.JSONArray()
+                for (p in presets) {
+                    val o = org.json.JSONObject()
+                    o.put("id", p.id)
+                    o.put("name", p.name)
+                    o.put("clearBass", p.clearBass)
+                    val gArr = org.json.JSONArray()
+                    p.tenBandGains.forEach { gArr.put(it.toDouble()) }
+                    o.put("gains", gArr)
+                    arr.put(o)
+                }
+                context.getSharedPreferences(PREFS_PRESETS, Context.MODE_PRIVATE)
+                    .edit()
+                    .putString(KEY_SAVED_PRESETS, arr.toString())
+                    .apply()
+            } catch (_: Throwable) {}
+        }
     }
 
     /**
@@ -696,9 +927,17 @@ class BluetoothConnectionManager private constructor(private val context: Contex
         return try {
             val wrapper = socketWrapper ?: return false
             wrapper.write(bytes)
+            val hex = bytes.joinToString(" ") { "%02X".format(it) }
+            logDiagnostic(
+                direction = LogDirection.TX,
+                opcodeName = "TX_WIRE",
+                rawHex = hex,
+                payloadHex = if (bytes.size > 8) bytes.copyOfRange(7, bytes.size - 2).joinToString(" ") { "%02X".format(it) } else hex,
+                note = "RFCOMM Sent ${bytes.size} bytes"
+            )
             true
         } catch (e: Exception) {
-            addLog("Write error: ${e.message}")
+            logDiagnostic(LogDirection.ERROR, opcodeName = "TX_ERROR", note = "Write error: ${e.message}")
             false
         }
     }
@@ -711,8 +950,9 @@ class BluetoothConnectionManager private constructor(private val context: Contex
             try {
                 val ackFrame = MdrFrameEncoder.buildAck(ackSeq)
                 socketWrapper?.write(ackFrame)
+                logDiagnostic(LogDirection.ACK_TX, opcodeName = "HOST_ACK", note = "Host ACK sent (seq=$ackSeq)")
             } catch (e: Exception) {
-                Log.w(TAG, "Failed to send host ACK: ${e.message}")
+                logDiagnostic(LogDirection.WARN, opcodeName = "HOST_ACK_FAIL", note = "Failed to send host ACK: ${e.message}")
             }
         }
     }
@@ -740,13 +980,13 @@ class BluetoothConnectionManager private constructor(private val context: Contex
                 }
             } catch (e: Exception) {
                 if (isActive) {
-                    addLog("Socket read exception: ${e.message}")
+                    logDiagnostic(LogDirection.ERROR, opcodeName = "SOCKET_EX", note = "Socket read exception: ${e.message}")
                 }
             } finally {
                 withContext(Dispatchers.Main) {
                     if (_connectionState.value is ConnectionState.Connected) {
                         _connectionState.value = ConnectionState.Disconnected("Connection closed by peer")
-                        addLog("Connection closed.")
+                        logDiagnostic(LogDirection.INFO, opcodeName = "DISCONNECT", note = "RFCOMM connection closed.")
                     }
                 }
             }
@@ -760,6 +1000,7 @@ class BluetoothConnectionManager private constructor(private val context: Contex
         when (packet.type) {
             MdrConstants.TYPE_ACK -> {
                 txSequence = 1 - txSequence
+                logDiagnostic(LogDirection.ACK_RX, opcodeName = "DEVICE_ACK", note = "Headset confirmed frame (seq=${packet.sequence})")
                 pendingAckWaiter?.complete(packet.sequence)
             }
 
@@ -770,6 +1011,11 @@ class BluetoothConnectionManager private constructor(private val context: Contex
 
                 val payload = packet.payload
                 if (payload.isEmpty()) return
+
+                val opCode = payload[0].toInt() and 0xFF
+                val opName = "0x%02X".format(opCode)
+                val payloadStr = payload.joinToString(" ") { "%02X".format(it) }
+                logDiagnostic(LogDirection.RX, opcode = opCode, opcodeName = "RX_$opName", payloadHex = payloadStr, note = "Packet Type ${packet.type}")
 
                 // Check for Handshake Response (0x01)
                 if (MdrResponseParser.isHandshakeResponse(payload)) {

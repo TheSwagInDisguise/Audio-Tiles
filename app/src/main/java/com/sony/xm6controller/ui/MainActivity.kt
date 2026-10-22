@@ -3,6 +3,7 @@ package com.sony.xm6controller.ui
 import android.Manifest
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -43,6 +44,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import android.content.ClipData
+import android.content.ClipboardManager
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkAdd
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.CompareArrows
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Info
@@ -161,12 +173,19 @@ fun MainScreen(repository: HeadphoneRepository) {
     val soundFeaturesState by repository.soundFeaturesState.collectAsState()
     val tileCycleScheme by repository.tileCycleScheme.collectAsState()
     val targetDevice by repository.targetDevice.collectAsState()
+    val deviceCapabilities by repository.deviceCapabilities.collectAsState()
+    val isEqBypassed by repository.isEqBypassed.collectAsState()
+    val userPresets by repository.userPresets.collectAsState()
     val diagnosticLogs by repository.diagnosticLogs.collectAsState()
+    val diagnosticEntries by repository.diagnosticEntries.collectAsState()
 
     var selectedTab by remember { mutableIntStateOf(0) }
     var foregroundServiceEnabled by remember { mutableStateOf(false) }
     var connectionErrorDialog by remember { mutableStateOf<String?>(null) }
     var pastePeqDialogVisible by remember { mutableStateOf(false) }
+    var autoEqCatalogVisible by remember { mutableStateOf(false) }
+    var savePresetDialogVisible by remember { mutableStateOf(false) }
+    var newPresetName by remember { mutableStateOf("") }
 
     // File picker launcher for .peqdb, .json, and .txt files
     val filePickerLauncher = rememberLauncherForActivityResult(
@@ -353,6 +372,7 @@ fun MainScreen(repository: HeadphoneRepository) {
                     connectionState = connectionState,
                     targetDevice = targetDevice,
                     batteryState = batteryState,
+                    deviceCapabilities = deviceCapabilities,
                     repository = repository,
                     onConnect = { dev ->
                         scope.launch {
@@ -445,8 +465,38 @@ fun MainScreen(repository: HeadphoneRepository) {
                         tenBandState = tenBandEqState,
                         equalizerState = equalizerState,
                         isConnected = connectionState.isConnected,
+                        isEqBypassed = isEqBypassed,
+                        userPresets = userPresets,
+                        onToggleBypass = {
+                            repository.toggleEqBypass()
+                            Toast.makeText(
+                                context,
+                                if (!isEqBypassed) "A/B Audition: EQ Bypassed (Flat 0dB sent)" else "A/B Audition: EQ Curve Restored",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        },
+                        onSaveCurrentPreset = {
+                            savePresetDialogVisible = true
+                        },
+                        onDeleteUserPreset = { presetId ->
+                            repository.deleteUserPreset(presetId)
+                            Toast.makeText(context, "Preset removed", Toast.LENGTH_SHORT).show()
+                        },
+                        onSelectUserPreset = { preset ->
+                            scope.launch {
+                                repository.applyTenBandEq(preset.toTenBandEqState().copy(profileName = preset.name))
+                                Toast.makeText(context, "Applied preset: ${preset.name}", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        onOpenAutoEqCatalog = {
+                            autoEqCatalogVisible = true
+                        },
                         onUpdateBand = { index, gainDb ->
                             val next = tenBandEqState.withBand(index, gainDb)
+                            scope.launch { repository.applyTenBandEq(next) }
+                        },
+                        onUpdateClearBass = { cb ->
+                            val next = tenBandEqState.withClearBass(cb)
                             scope.launch { repository.applyTenBandEq(next) }
                         },
                         onResetFlat = {
@@ -493,6 +543,7 @@ fun MainScreen(repository: HeadphoneRepository) {
                 item {
                     SoundFeaturesCard(
                         soundFeatures = soundFeaturesState,
+                        deviceCapabilities = deviceCapabilities,
                         isConnected = connectionState.isConnected,
                         onToggleSpeakToChat = { enabled ->
                             scope.launch {
@@ -538,11 +589,83 @@ fun MainScreen(repository: HeadphoneRepository) {
                 }
 
                 item {
-                    DiagnosticsCard(logs = diagnosticLogs)
+                    DiagnosticsCard(
+                        diagnosticEntries = diagnosticEntries,
+                        onCopyReport = {
+                            val report = repository.exportDiagnosticReport()
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            clipboard.setPrimaryClip(ClipData.newPlainText("Sony Audio Tiles Diagnostic Report", report))
+                            Toast.makeText(context, "Diagnostic report copied to clipboard!", Toast.LENGTH_LONG).show()
+                        },
+                        onClearLogs = {
+                            repository.clearDiagnosticLogs()
+                            Toast.makeText(context, "Logs cleared", Toast.LENGTH_SHORT).show()
+                        }
+                    )
                 }
             }
 
             item { Spacer(modifier = Modifier.height(16.dp)) }
+        }
+
+        // AutoEq Catalog Search Modal Dialog
+        if (autoEqCatalogVisible) {
+            AutoEqCatalogDialog(
+                catalogEntries = repository.autoEqCatalog,
+                onDismiss = { autoEqCatalogVisible = false },
+                onApplyProfile = { profile ->
+                    scope.launch {
+                        repository.importAndApplyPeqProfile(profile)
+                        Toast.makeText(context, "Applied AutoEq: ${profile.name}", Toast.LENGTH_SHORT).show()
+                    }
+                    autoEqCatalogVisible = false
+                }
+            )
+        }
+
+        // Save Custom Preset Dialog
+        if (savePresetDialogVisible) {
+            AlertDialog(
+                onDismissRequest = { savePresetDialogVisible = false },
+                title = { Text("Save Custom Preset", fontWeight = FontWeight.Bold, fontSize = 16.sp) },
+                text = {
+                    Column {
+                        Text(
+                            "Save current 10-band EQ frequencies & Clear Bass settings to your local device library:",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = newPresetName,
+                            onValueChange = { newPresetName = it },
+                            placeholder = { Text("e.g. My Bassline Curve", fontSize = 12.sp) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            if (newPresetName.isNotBlank()) {
+                                repository.saveUserPreset(newPresetName, tenBandEqState)
+                                Toast.makeText(context, "Saved preset \"$newPresetName\"", Toast.LENGTH_SHORT).show()
+                                newPresetName = ""
+                                savePresetDialogVisible = false
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = SonyCopper)
+                    ) {
+                        Text("Save")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { savePresetDialogVisible = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
 
         // Paste PEQ Text Modal Dialog
@@ -667,7 +790,15 @@ fun TenBandEqualizerCard(
     tenBandState: TenBandEqState,
     equalizerState: EqualizerState,
     isConnected: Boolean,
+    isEqBypassed: Boolean,
+    userPresets: List<UserEqPreset>,
+    onToggleBypass: () -> Unit,
+    onSaveCurrentPreset: () -> Unit,
+    onDeleteUserPreset: (String) -> Unit,
+    onSelectUserPreset: (UserEqPreset) -> Unit,
+    onOpenAutoEqCatalog: () -> Unit,
     onUpdateBand: (Int, Float) -> Unit,
+    onUpdateClearBass: (Int) -> Unit,
     onResetFlat: () -> Unit,
     onImportFile: () -> Unit,
     onPastePeq: () -> Unit,
@@ -693,20 +824,48 @@ fun TenBandEqualizerCard(
                         fontSize = 16.sp
                     )
                     Text(
-                        text = "Curve: ${tenBandState.profileName}",
+                        text = if (isEqBypassed) "A/B BYPASS ACTIVE (Flat 0 dB)" else "Curve: ${tenBandState.profileName}",
                         fontSize = 12.sp,
-                        color = SonyGold
+                        fontWeight = if (isEqBypassed) FontWeight.Bold else FontWeight.Normal,
+                        color = if (isEqBypassed) Color(0xFFF59E0B) else SonyGold
                     )
                 }
-                Row {
+
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    // Instant A/B Compare / Bypass Toggle Button
+                    if (isEqBypassed) {
+                        Button(
+                            onClick = onToggleBypass,
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706)),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Icon(Icons.Default.CompareArrows, contentDescription = null, modifier = Modifier.size(15.dp), tint = Color.Black)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Bypass", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                        }
+                    } else {
+                        OutlinedButton(
+                            onClick = onToggleBypass,
+                            enabled = isConnected,
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Icon(Icons.Default.CompareArrows, contentDescription = null, modifier = Modifier.size(15.dp), tint = SonyCopper)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("A/B Audition", fontSize = 11.sp, color = SonyCopper)
+                        }
+                    }
+
                     OutlinedButton(
                         onClick = onImportFile,
                         enabled = isConnected,
-                        modifier = Modifier.height(34.dp)
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                        modifier = Modifier.height(32.dp)
                     ) {
                         Icon(Icons.Default.FileUpload, contentDescription = null, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Import PEQ", fontSize = 11.sp)
+                        Text("Import", fontSize = 11.sp)
                     }
                 }
             }
@@ -725,9 +884,94 @@ fun TenBandEqualizerCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Action row: AutoEq Catalog, Save Current Preset, Paste Text
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Button(
+                    onClick = onOpenAutoEqCatalog,
+                    colors = ButtonDefaults.buttonColors(containerColor = SonyCopper),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                    modifier = Modifier.height(30.dp)
+                ) {
+                    Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.Black)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("AutoEq Database", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    OutlinedButton(
+                        onClick = onSaveCurrentPreset,
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                        modifier = Modifier.height(30.dp)
+                    ) {
+                        Icon(Icons.Default.BookmarkAdd, contentDescription = null, modifier = Modifier.size(14.dp), tint = SonyCopper)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Save Preset", fontSize = 11.sp, color = SonyCopper)
+                    }
+
+                    TextButton(
+                        onClick = onPastePeq,
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                        modifier = Modifier.height(30.dp)
+                    ) {
+                        Text("Paste Text", fontSize = 11.sp, color = SonyCopper)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // User Saved Presets Row
+            Text("Preset Library:", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = SonyGold)
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                userPresets.forEach { preset ->
+                    val isSel = (tenBandState.profileName == preset.name)
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (isSel) SonyCopper else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, if (isSel) SonyGold else CardBorder),
+                        modifier = Modifier.clickable(enabled = isConnected) { onSelectUserPreset(preset) }
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = preset.name,
+                                fontSize = 10.sp,
+                                fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSel) Color.Black else MaterialTheme.colorScheme.onSurface
+                            )
+                            if (!preset.id.startsWith("default_")) {
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(
+                                    Icons.Default.Clear,
+                                    contentDescription = "Delete preset",
+                                    tint = if (isSel) Color.Black else Color.Gray,
+                                    modifier = Modifier
+                                        .size(14.dp)
+                                        .clickable { onDeleteUserPreset(preset.id) }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
             // Audiophile Target Profile Quick Chips
-            Text("Audiophile Target Curves:", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = SonyCopper)
-            Spacer(modifier = Modifier.height(6.dp))
+            Text("Reference Target Curves:", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = SonyCopper)
+            Spacer(modifier = Modifier.height(4.dp))
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -744,10 +988,10 @@ fun TenBandEqualizerCard(
                     ) {
                         Text(
                             text = target.name,
-                            fontSize = 11.sp,
+                            fontSize = 10.sp,
                             fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
                             color = if (isSel) Color.Black else MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     }
                 }
@@ -755,20 +999,44 @@ fun TenBandEqualizerCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = onPastePeq, enabled = isConnected) {
-                    Text("Paste AutoEq Text", fontSize = 11.sp, color = SonyCopper)
+            // Sony Clear Bass Sub-woofer Slider
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text("Clear Bass (Sub-Woofer)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = SonyCopper)
+                    Text("Hardware dynamic sub-frequency boost (-10 to +10)", fontSize = 10.sp, color = Color.Gray)
                 }
-                TextButton(onClick = onResetFlat, enabled = isConnected) {
-                    Text("Reset to Flat (0 dB)", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
-                }
+                Text(
+                    text = "${if (tenBandState.clearBass > 0) "+" else ""}${tenBandState.clearBass}",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = SonyGold
+                )
             }
+            Slider(
+                value = tenBandState.clearBass.toFloat(),
+                onValueChange = { onUpdateClearBass(it.toInt()) },
+                valueRange = -10f..10f,
+                steps = 19,
+                enabled = isConnected,
+                colors = SliderDefaults.colors(thumbColor = SonyGold, activeTrackColor = SonyCopper)
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // 10 Compact Sliders Grid
-            Text("Octave Band Sliders (-12 dB to +12 dB):", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-            Spacer(modifier = Modifier.height(6.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Octave Band Sliders (-12 dB to +12 dB):", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                TextButton(onClick = onResetFlat, enabled = isConnected) {
+                    Text("Reset Flat (0 dB)", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                }
+            }
 
             TEN_BAND_FREQUENCIES.forEachIndexed { idx, freqHz ->
                 val gain = tenBandState.bands.getOrElse(idx) { 0.0f }
@@ -987,6 +1255,7 @@ fun DeviceStatusCard(
     connectionState: ConnectionState,
     targetDevice: BluetoothDevice?,
     batteryState: BatteryState,
+    deviceCapabilities: DeviceCapabilities,
     repository: HeadphoneRepository,
     onConnect: (BluetoothDevice?) -> Unit,
     onDisconnect: () -> Unit,
@@ -1034,8 +1303,9 @@ fun DeviceStatusCard(
                             fontSize = 16.sp
                         )
                         Text(
-                            text = deviceType.displayName,
+                            text = "${deviceCapabilities.modelName} • ${deviceCapabilities.family.displayName}",
                             fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
                             color = SonyCopper
                         )
                     }
@@ -1188,6 +1458,7 @@ fun DeviceStatusCard(
 @Composable
 fun SoundFeaturesCard(
     soundFeatures: SoundFeaturesState,
+    deviceCapabilities: DeviceCapabilities,
     isConnected: Boolean,
     onToggleSpeakToChat: (Boolean) -> Unit,
     onToggleDsee: (Boolean) -> Unit,
@@ -1204,88 +1475,104 @@ fun SoundFeaturesCard(
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "Sound Connect Hardware Features",
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 16.sp
-            )
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // 1. Speak-to-Chat
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Speak-to-Chat", fontWeight = FontWeight.Medium, fontSize = 14.sp)
-                    Text("Auto ambient sound passthrough when user speaks", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-                }
-                Switch(
-                    checked = soundFeatures.speakToChat.enabled,
-                    onCheckedChange = onToggleSpeakToChat,
-                    enabled = isConnected
+                Text(
+                    text = "Sound Connect Hardware Features",
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 16.sp
+                )
+                Text(
+                    text = deviceCapabilities.modelName,
+                    fontSize = 11.sp,
+                    color = SonyCopper,
+                    fontWeight = FontWeight.Bold
                 )
             }
-
             Spacer(modifier = Modifier.height(14.dp))
 
-            // 2. DSEE Extreme
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("DSEE Extreme (AI Upscaling)", fontWeight = FontWeight.Medium, fontSize = 14.sp)
-                    Text("Restores high frequencies in compressed Bluetooth audio", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+            // 1. Speak-to-Chat (Hardware Dependent)
+            if (deviceCapabilities.hasSpeakToChat) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Speak-to-Chat", fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                        Text("Auto ambient sound passthrough when user speaks", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                    }
+                    Switch(
+                        checked = soundFeatures.speakToChat.enabled,
+                        onCheckedChange = onToggleSpeakToChat,
+                        enabled = isConnected
+                    )
                 }
-                Switch(
-                    checked = soundFeatures.dseeExtreme,
-                    onCheckedChange = onToggleDsee,
-                    enabled = isConnected
-                )
+                Spacer(modifier = Modifier.height(14.dp))
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // 3. Pause when taken off
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Pause on Removal", fontWeight = FontWeight.Medium, fontSize = 14.sp)
-                    Text("Pauses playback via optical/capacitive wearing sensor", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+            // 2. DSEE Extreme (Hardware Dependent)
+            if (deviceCapabilities.hasDsee) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("DSEE Extreme (AI Upscaling)", fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                        Text("Restores high frequencies in compressed Bluetooth audio", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                    }
+                    Switch(
+                        checked = soundFeatures.dseeExtreme,
+                        onCheckedChange = onToggleDsee,
+                        enabled = isConnected
+                    )
                 }
-                Switch(
-                    checked = soundFeatures.wearingPause,
-                    onCheckedChange = onToggleWearingPause,
-                    enabled = isConnected
-                )
+                Spacer(modifier = Modifier.height(14.dp))
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // 4. Touch Sensor Control Panel
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Touch Sensor Control Panel", fontWeight = FontWeight.Medium, fontSize = 14.sp)
-                    Text("Enables tap/swipe volume and media gestures on earcup", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+            // 3. Pause when taken off (Hardware Dependent)
+            if (deviceCapabilities.hasWearingDetection) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Pause on Removal", fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                        Text("Pauses playback via optical/capacitive wearing sensor", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                    }
+                    Switch(
+                        checked = soundFeatures.wearingPause,
+                        onCheckedChange = onToggleWearingPause,
+                        enabled = isConnected
+                    )
                 }
-                Switch(
-                    checked = soundFeatures.touchSensorEnabled,
-                    onCheckedChange = onToggleTouchSensor,
-                    enabled = isConnected
-                )
+                Spacer(modifier = Modifier.height(14.dp))
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            // 4. Touch Sensor Control Panel (Hardware Dependent)
+            if (deviceCapabilities.hasTouchSensorControl) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Touch Sensor Control Panel", fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                        Text("Enables tap/swipe volume and media gestures on earcup", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                    }
+                    Switch(
+                        checked = soundFeatures.touchSensorEnabled,
+                        onCheckedChange = onToggleTouchSensor,
+                        enabled = isConnected
+                    )
+                }
+                Spacer(modifier = Modifier.height(14.dp))
+            }
 
             // 5. Sound Quality Priority Mode
             Row(
@@ -1871,7 +2158,23 @@ fun PermissionRequestCard(onRequestPermissions: () -> Unit) {
 }
 
 @Composable
-fun DiagnosticsCard(logs: List<String>) {
+fun DiagnosticsCard(
+    diagnosticEntries: List<MdrDiagnosticLogEntry>,
+    onCopyReport: () -> Unit,
+    onClearLogs: () -> Unit
+) {
+    var searchQuery by remember { mutableStateOf("") }
+
+    val filtered = remember(diagnosticEntries, searchQuery) {
+        if (searchQuery.isBlank()) diagnosticEntries
+        else diagnosticEntries.filter {
+            it.opcodeName.contains(searchQuery, ignoreCase = true) ||
+            it.payloadHex.contains(searchQuery, ignoreCase = true) ||
+            it.note.contains(searchQuery, ignoreCase = true) ||
+            it.direction.name.contains(searchQuery, ignoreCase = true)
+        }
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -1889,31 +2192,56 @@ fun DiagnosticsCard(logs: List<String>) {
                     Icon(Icons.Default.Info, contentDescription = null, tint = SonyGold)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "MDR Protocol Live Console",
+                        text = "MDR Diagnostics & Packet Stream",
                         fontWeight = FontWeight.SemiBold,
-                        fontSize = 16.sp
+                        fontSize = 15.sp
                     )
                 }
-                Text(
-                    text = "${logs.size} frames",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                )
+                Row {
+                    IconButton(onClick = onCopyReport, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.ContentCopy, contentDescription = "Copy Report", tint = SonyCopper, modifier = Modifier.size(18.dp))
+                    }
+                    IconButton(onClick = onClearLogs, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Delete, contentDescription = "Clear Logs", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+                    }
+                }
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = { Text("Filter by opcode, hex, or direction (TX, RX)...", fontSize = 11.sp) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 11.sp),
+                singleLine = true,
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear", modifier = Modifier.size(16.dp))
+                        }
+                    }
+                }
+            )
 
             Spacer(modifier = Modifier.height(10.dp))
 
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(160.dp),
-                color = Color(0xFF0A0A0C),
-                shape = RoundedCornerShape(8.dp)
+                    .height(260.dp),
+                color = Color(0xFF07090E),
+                shape = RoundedCornerShape(8.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF1B202E))
             ) {
-                if (logs.isEmpty()) {
+                if (filtered.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(
-                            text = "Awaiting Bluetooth RFCOMM session...",
+                            text = if (searchQuery.isNotEmpty()) "No packets match filter" else "Awaiting Bluetooth RFCOMM session...",
                             color = Color.Gray,
                             fontSize = 12.sp,
                             fontFamily = FontFamily.Monospace
@@ -1924,19 +2252,205 @@ fun DiagnosticsCard(logs: List<String>) {
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(8.dp),
-                        reverseLayout = true
+                        reverseLayout = true,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        items(logs.reversed()) { logLine ->
-                            Text(
-                                text = logLine,
-                                color = if (logLine.contains("error", true)) Color.Red else Color(0xFF81C784),
-                                fontSize = 11.sp,
-                                fontFamily = FontFamily.Monospace
-                            )
+                        items(filtered.reversed(), key = { it.id }) { entry ->
+                            val (dirColor, dirBg) = when (entry.direction) {
+                                LogDirection.TX -> Pair(Color(0xFF0A0C10), SonyCopper)
+                                LogDirection.RX -> Pair(Color(0xFF032115), AncGreen)
+                                LogDirection.ACK_TX, LogDirection.ACK_RX -> Pair(Color(0xFF042436), AmbientBlue)
+                                LogDirection.ERROR -> Pair(Color.White, Color(0xFFDC2626))
+                                LogDirection.WARN -> Pair(Color.Black, SonyGold)
+                                LogDirection.INFO -> Pair(Color(0xFFCBD5E1), Color(0xFF1E2433))
+                            }
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(Color(0xFF0F131D), RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Surface(
+                                    color = dirBg,
+                                    shape = RoundedCornerShape(4.dp)
+                                ) {
+                                    Text(
+                                        text = entry.direction.name,
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = dirColor,
+                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = entry.timeFormatted,
+                                    fontSize = 10.sp,
+                                    color = Color(0xFF64748B),
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    if (entry.opcodeName.isNotEmpty()) {
+                                        Text(
+                                            text = entry.opcodeName,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = SonyGold,
+                                            fontFamily = FontFamily.Monospace
+                                        )
+                                    }
+                                    if (entry.payloadHex.isNotEmpty()) {
+                                        Text(
+                                            text = entry.payloadHex,
+                                            fontSize = 10.sp,
+                                            color = Color(0xFF94A3B8),
+                                            fontFamily = FontFamily.Monospace
+                                        )
+                                    }
+                                    if (entry.note.isNotEmpty()) {
+                                        Text(
+                                            text = entry.note,
+                                            fontSize = 10.sp,
+                                            color = Color(0xFFCBD5E1)
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+fun AutoEqCatalogDialog(
+    catalogEntries: List<AutoEqCatalogEntry>,
+    onDismiss: () -> Unit,
+    onApplyProfile: (PeqProfile) -> Unit
+) {
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedModelFilter by remember { mutableStateOf("ALL") }
+
+    val models = remember(catalogEntries) {
+        listOf("ALL") + catalogEntries.map { it.modelName }.distinct()
+    }
+
+    val filtered = remember(searchQuery, selectedModelFilter, catalogEntries) {
+        catalogEntries.filter { entry ->
+            val matchModel = (selectedModelFilter == "ALL" || entry.modelName.equals(selectedModelFilter, ignoreCase = true))
+            val matchQuery = searchQuery.isBlank() ||
+                entry.modelName.contains(searchQuery, ignoreCase = true) ||
+                entry.targetName.contains(searchQuery, ignoreCase = true) ||
+                entry.labSource.contains(searchQuery, ignoreCase = true) ||
+                entry.description.contains(searchQuery, ignoreCase = true)
+            matchModel && matchQuery
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Layers, contentDescription = null, tint = SonyCopper)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("AutoEq Direct Headphone Catalog", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            }
+        },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "Select your exact Sony headphone model to load lab-calibrated Harman and Oratory1990 target profiles directly to hardware DSP.",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Search model or target (e.g. XM5, Crinacle...)", fontSize = 11.sp) },
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 11.sp),
+                    singleLine = true,
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Model filter chips
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    models.forEach { model ->
+                        val isSel = (selectedModelFilter == model)
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isSel) SonyCopper else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, if (isSel) SonyGold else CardBorder),
+                            modifier = Modifier.clickable { selectedModelFilter = model }
+                        ) {
+                            Text(
+                                text = model,
+                                fontSize = 10.sp,
+                                fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSel) Color.Black else MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth().height(280.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(filtered, key = { it.id }) { entry ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth().border(1.dp, CardBorder, RoundedCornerShape(10.dp)),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F131D)),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(text = entry.modelName, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = SonyGold)
+                                        Text(text = entry.targetName, fontSize = 11.sp, color = SonyCopper, fontWeight = FontWeight.Medium)
+                                        Text(text = "Source: ${entry.labSource} • Preamp: ${entry.profile.preampDb} dB", fontSize = 10.sp, color = Color(0xFF94A3B8))
+                                    }
+                                    Button(
+                                        onClick = { onApplyProfile(entry.profile) },
+                                        colors = ButtonDefaults.buttonColors(containerColor = SonyCopper),
+                                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                        modifier = Modifier.height(30.dp)
+                                    ) {
+                                        Text("Apply", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(text = entry.description, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f))
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        }
+    )
 }
