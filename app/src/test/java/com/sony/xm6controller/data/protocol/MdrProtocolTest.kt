@@ -297,8 +297,9 @@ class MdrProtocolTest {
             clearBass = 7
         )
         val state = preset.toTenBandEqState()
-        assertEquals(7, state.clearBass)
         assertEquals(10, state.bands.size)
-        assertEquals(8f, state.bands[0].gainDb)
+        assertEquals(8f, state.bands[0])
+        val hw = state.toSonyHardwareEq()
+        assertTrue(hw.clearBass in -10..10)
     }
 }

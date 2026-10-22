@@ -119,7 +119,12 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.sony.xm6controller.R
 import com.sony.xm6controller.data.bluetooth.ConnectionState
+import com.sony.xm6controller.data.bluetooth.LogDirection
+import com.sony.xm6controller.data.bluetooth.MdrDiagnosticLogEntry
+import com.sony.xm6controller.domain.AutoEqCatalogEntry
 import com.sony.xm6controller.domain.BatteryState
+import com.sony.xm6controller.domain.DeviceCapabilities
+import com.sony.xm6controller.domain.DeviceFamily
 import com.sony.xm6controller.domain.DeviceType
 import com.sony.xm6controller.domain.EqPreset
 import com.sony.xm6controller.domain.EqualizerState
@@ -133,6 +138,7 @@ import com.sony.xm6controller.domain.TEN_BAND_FREQUENCIES
 import com.sony.xm6controller.domain.TEN_BAND_LABELS
 import com.sony.xm6controller.domain.TenBandEqState
 import com.sony.xm6controller.domain.TileCycleScheme
+import com.sony.xm6controller.domain.UserEqPreset
 import com.sony.xm6controller.service.XM6ForegroundService
 import com.sony.xm6controller.ui.theme.AmbientBlue
 import com.sony.xm6controller.ui.theme.AncGreen

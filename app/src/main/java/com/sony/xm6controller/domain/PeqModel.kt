@@ -601,10 +601,10 @@ data class UserEqPreset(
     val createdAt: Long = System.currentTimeMillis()
 ) {
     fun toTenBandEqState(): TenBandEqState {
-        val bands = tenBandGains.mapIndexed { idx, gain ->
-            TenBand(idx, TenBand.ISO_FREQUENCIES.getOrElse(idx) { 1000 }, gain)
+        val bands = tenBandGains.take(10).let { list ->
+            if (list.size == 10) list else list + List(10 - list.size) { 0f }
         }
-        return TenBandEqState(bands = bands, clearBass = clearBass)
+        return TenBandEqState(bands = bands, profileName = name)
     }
 
     companion object {

@@ -15,6 +15,7 @@ import com.sony.xm6controller.data.protocol.MdrFrameEncoder
 import com.sony.xm6controller.data.protocol.MdrPacket
 import com.sony.xm6controller.data.protocol.MdrResponseParser
 import com.sony.xm6controller.domain.BatteryState
+import com.sony.xm6controller.domain.DeviceCapabilities
 import com.sony.xm6controller.domain.EqPreset
 import com.sony.xm6controller.domain.EqualizerState
 import com.sony.xm6controller.domain.NoiseControlMode
@@ -24,6 +25,7 @@ import com.sony.xm6controller.domain.SoundFeaturesState
 import com.sony.xm6controller.domain.SpeakToChatState
 import com.sony.xm6controller.domain.TenBandEqState
 import com.sony.xm6controller.domain.TileCycleScheme
+import com.sony.xm6controller.domain.UserEqPreset
 import com.sony.xm6controller.service.XM6ForegroundService
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -237,10 +239,12 @@ class BluetoothConnectionManager private constructor(private val context: Contex
             appendLine("Noise Control Mode: ${nc.mode.label} (Level ${nc.ambientLevel}, Voice Focus: ${nc.focusOnVoice})")
             appendLine("Battery Status: ${bat.displayString}")
             appendLine("EQ Bypass Active (A/B Test): $bypass")
-            appendLine("Clear Bass Level: ${eq.clearBass}")
+            val hwEq = eq.toSonyHardwareEq()
+            appendLine("Clear Bass Level: ${hwEq.clearBass}")
             appendLine("10-Band EQ Frequencies & Gains:")
-            eq.bands.forEach { b ->
-                appendLine("    ${b.frequencyHz.toString().padEnd(6)} Hz : ${if (b.gainDb >= 0) "+" else ""}${b.gainDb} dB")
+            com.sony.xm6controller.domain.TEN_BAND_FREQUENCIES.forEachIndexed { i, freq ->
+                val gain = eq.bands.getOrElse(i) { 0f }
+                appendLine("    ${freq.toString().padEnd(6)} Hz : ${if (gain >= 0) "+" else ""}${gain} dB")
             }
             appendLine()
             appendLine("--- RECENT MDR PACKET STREAM (Last ${logs.size} Events) ---")
@@ -269,8 +273,14 @@ class BluetoothConnectionManager private constructor(private val context: Contex
         scope.launch {
             if (newBypass) {
                 logDiagnostic(LogDirection.INFO, opcodeName = "A/B_BYPASS", note = "A/B Audition: EQ Bypassed (Flat 0dB sent to hardware DSP)")
-                val flatPayload = byteArrayOf(0x58.toByte(), 0x00, 0xA0.toByte(), 0x06, 10, 10, 10, 10, 10, 10)
-                sendCustomPayload("SET_EQ_BYPASS", flatPayload)
+                commandMutex.withLock {
+                    val frame = MdrCommandBuilder.buildSetEqualizerBandsFrame(
+                        seq = txSequence,
+                        clearBass = 0,
+                        b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0
+                    )
+                    sendRawBytes(frame)
+                }
             } else {
                 logDiagnostic(LogDirection.INFO, opcodeName = "A/B_RESTORE", note = "A/B Audition: EQ Restored to active 10-band profile")
                 applyTenBandEq(_tenBandEqState.value)
