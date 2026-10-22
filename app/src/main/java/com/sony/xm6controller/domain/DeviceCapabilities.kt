@@ -27,55 +27,8 @@ data class DeviceCapabilities(
         fun resolve(deviceName: String?): DeviceCapabilities {
             val name = (deviceName ?: "").uppercase()
             return when {
-                name.contains("WH-1000XM6") || name.contains("1000XM6") -> DeviceCapabilities(
-                    modelName = "WH-1000XM6",
-                    family = DeviceFamily.OVER_EAR_FLAGSHIP,
-                    hasSpeakToChat = true,
-                    hasDsee = true,
-                    hasWindNoiseReduction = true,
-                    hasClearBass = true,
-                    hasEqualizer = true,
-                    hasMultiBattery = false,
-                    hasWearingDetection = true,
-                    hasTouchSensorControl = true
-                )
-                name.contains("WH-1000XM5") || name.contains("1000XM5") -> DeviceCapabilities(
-                    modelName = "WH-1000XM5",
-                    family = DeviceFamily.OVER_EAR_FLAGSHIP,
-                    hasSpeakToChat = true,
-                    hasDsee = true,
-                    hasWindNoiseReduction = true,
-                    hasClearBass = true,
-                    hasEqualizer = true,
-                    hasMultiBattery = false,
-                    hasWearingDetection = true,
-                    hasTouchSensorControl = true
-                )
-                name.contains("WH-1000XM4") || name.contains("1000XM4") -> DeviceCapabilities(
-                    modelName = "WH-1000XM4",
-                    family = DeviceFamily.OVER_EAR_FLAGSHIP,
-                    hasSpeakToChat = true,
-                    hasDsee = true,
-                    hasWindNoiseReduction = true,
-                    hasClearBass = true,
-                    hasEqualizer = true,
-                    hasMultiBattery = false,
-                    hasWearingDetection = true,
-                    hasTouchSensorControl = true
-                )
-                name.contains("WH-1000XM3") || name.contains("1000XM3") -> DeviceCapabilities(
-                    modelName = "WH-1000XM3",
-                    family = DeviceFamily.OVER_EAR_FLAGSHIP,
-                    hasSpeakToChat = false,
-                    hasDsee = true,
-                    hasWindNoiseReduction = true,
-                    hasClearBass = true,
-                    hasEqualizer = true,
-                    hasMultiBattery = false,
-                    hasWearingDetection = false,
-                    hasTouchSensorControl = true
-                )
-                name.contains("WF-1000XM5") -> DeviceCapabilities(
+                // TWS Earbuds checked first to prevent "1000XM5" matching WH-1000XM5
+                name.contains("WF-1000XM5") || (name.contains("1000XM5") && name.contains("WF")) -> DeviceCapabilities(
                     modelName = "WF-1000XM5",
                     family = DeviceFamily.TWS_FLAGSHIP,
                     hasSpeakToChat = true,
@@ -87,7 +40,7 @@ data class DeviceCapabilities(
                     hasWearingDetection = true,
                     hasTouchSensorControl = true
                 )
-                name.contains("WF-1000XM4") -> DeviceCapabilities(
+                name.contains("WF-1000XM4") || (name.contains("1000XM4") && name.contains("WF")) -> DeviceCapabilities(
                     modelName = "WF-1000XM4",
                     family = DeviceFamily.TWS_FLAGSHIP,
                     hasSpeakToChat = true,
@@ -99,7 +52,7 @@ data class DeviceCapabilities(
                     hasWearingDetection = true,
                     hasTouchSensorControl = true
                 )
-                name.contains("WF-1000XM3") -> DeviceCapabilities(
+                name.contains("WF-1000XM3") || (name.contains("1000XM3") && name.contains("WF")) -> DeviceCapabilities(
                     modelName = "WF-1000XM3",
                     family = DeviceFamily.TWS_FLAGSHIP,
                     hasSpeakToChat = false,
@@ -109,6 +62,56 @@ data class DeviceCapabilities(
                     hasEqualizer = true,
                     hasMultiBattery = true,
                     hasWearingDetection = true,
+                    hasTouchSensorControl = true
+                )
+
+                // Over-Ear Flagships
+                name.contains("WH-1000XM6") || (name.contains("1000XM6") && !name.contains("WF")) -> DeviceCapabilities(
+                    modelName = "WH-1000XM6",
+                    family = DeviceFamily.OVER_EAR_FLAGSHIP,
+                    hasSpeakToChat = true,
+                    hasDsee = true,
+                    hasWindNoiseReduction = true,
+                    hasClearBass = true,
+                    hasEqualizer = true,
+                    hasMultiBattery = false,
+                    hasWearingDetection = true,
+                    hasTouchSensorControl = true
+                )
+                name.contains("WH-1000XM5") || (name.contains("1000XM5") && !name.contains("WF")) -> DeviceCapabilities(
+                    modelName = "WH-1000XM5",
+                    family = DeviceFamily.OVER_EAR_FLAGSHIP,
+                    hasSpeakToChat = true,
+                    hasDsee = true,
+                    hasWindNoiseReduction = true,
+                    hasClearBass = true,
+                    hasEqualizer = true,
+                    hasMultiBattery = false,
+                    hasWearingDetection = true,
+                    hasTouchSensorControl = true
+                )
+                name.contains("WH-1000XM4") || (name.contains("1000XM4") && !name.contains("WF")) -> DeviceCapabilities(
+                    modelName = "WH-1000XM4",
+                    family = DeviceFamily.OVER_EAR_FLAGSHIP,
+                    hasSpeakToChat = true,
+                    hasDsee = true,
+                    hasWindNoiseReduction = true,
+                    hasClearBass = true,
+                    hasEqualizer = true,
+                    hasMultiBattery = false,
+                    hasWearingDetection = true,
+                    hasTouchSensorControl = true
+                )
+                name.contains("WH-1000XM3") || (name.contains("1000XM3") && !name.contains("WF")) -> DeviceCapabilities(
+                    modelName = "WH-1000XM3",
+                    family = DeviceFamily.OVER_EAR_FLAGSHIP,
+                    hasSpeakToChat = false,
+                    hasDsee = true,
+                    hasWindNoiseReduction = true,
+                    hasClearBass = true,
+                    hasEqualizer = true,
+                    hasMultiBattery = false,
+                    hasWearingDetection = false,
                     hasTouchSensorControl = true
                 )
                 name.contains("LINKBUDS S") || name.contains("WF-LS900") -> DeviceCapabilities(
