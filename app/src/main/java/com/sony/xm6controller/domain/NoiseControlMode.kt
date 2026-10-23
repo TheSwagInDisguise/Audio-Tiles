@@ -108,6 +108,11 @@ data class BatteryState(
     val isAvailable: Boolean
         get() = level >= 0 || leftLevel >= 0 || rightLevel >= 0
 
+    // Convenience aliases for TWS telemetry
+    val levelLeft: Int get() = leftLevel
+    val levelRight: Int get() = rightLevel
+    val levelCase: Int get() = caseLevel
+
     val displayString: String
         get() {
             if (isTws && (leftLevel >= 0 || rightLevel >= 0)) {
