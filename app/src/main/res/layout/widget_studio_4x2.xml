@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_studio_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="12dp"
+    android:background="@drawable/ic_headphones"
+    android:backgroundTint="#121622">
+
+    <!-- Top Bar: Model & Battery Status -->
+    <LinearLayout
+        android:id="@+id/widget_studio_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/widget_studio_model"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Sony Audio Studio"
+                android:textColor="#C6A87C"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:maxLines="1" />
+
+            <TextView
+                android:id="@+id/widget_studio_telemetry"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Awaiting Connection"
+                android:textColor="#94A3B8"
+                android:textSize="10sp"
+                android:maxLines="1" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/widget_studio_battery_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="-- %"
+            android:textColor="#FFFFFF"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:paddingHorizontal="6dp"
+            android:paddingVertical="2dp"
+            android:background="@drawable/ic_tile_nc"
+            android:backgroundTint="#242C3E" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginVertical="8dp"
+        android:background="#1E2638" />
+
+    <!-- 3-Way Mode Segmented Control -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/widget_btn_nc"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="4dp"
+            android:text="ANC"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#202636" />
+
+        <Button
+            android:id="@+id/widget_btn_ambient"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:layout_marginHorizontal="2dp"
+            android:text="Ambient"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#202636" />
+
+        <Button
+            android:id="@+id/widget_btn_off"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:layout_marginStart="4dp"
+            android:text="Off"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#202636" />
+    </LinearLayout>
+
+    <!-- Bottom Actions: S2C, Bypass, Active Preset -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <Button
+            android:id="@+id/widget_btn_s2c"
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:text="S2C: OFF"
+            android:textSize="9sp"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#1D2434" />
+
+        <Button
+            android:id="@+id/widget_btn_bypass"
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:layout_marginStart="6dp"
+            android:text="A/B Bypass"
+            android:textSize="9sp"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#1D2434" />
+
+        <TextView
+            android:id="@+id/widget_tv_preset"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="AutoEq: Harman"
+            android:textColor="#D79E66"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:gravity="end"
+            android:maxLines="1"
+            android:ellipsize="end" />
+    </LinearLayout>
+
+</LinearLayout>

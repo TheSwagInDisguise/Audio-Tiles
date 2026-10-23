@@ -26,6 +26,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -93,6 +95,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -110,7 +113,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -121,6 +128,7 @@ import com.sony.xm6controller.R
 import com.sony.xm6controller.data.bluetooth.ConnectionState
 import com.sony.xm6controller.data.bluetooth.LogDirection
 import com.sony.xm6controller.data.bluetooth.MdrDiagnosticLogEntry
+import com.sony.xm6controller.domain.AcousticSealTester
 import com.sony.xm6controller.domain.AutoEqCatalogEntry
 import com.sony.xm6controller.domain.BatteryState
 import com.sony.xm6controller.domain.DeviceCapabilities
@@ -137,6 +145,7 @@ import com.sony.xm6controller.domain.SoundFeaturesState
 import com.sony.xm6controller.domain.TEN_BAND_FREQUENCIES
 import com.sony.xm6controller.domain.TEN_BAND_LABELS
 import com.sony.xm6controller.domain.TenBandEqState
+import com.sony.xm6controller.domain.ThemeSkin
 import com.sony.xm6controller.domain.TileCycleScheme
 import com.sony.xm6controller.domain.UserEqPreset
 import com.sony.xm6controller.service.XM6ForegroundService
@@ -158,8 +167,26 @@ class MainActivity : ComponentActivity() {
         repository = HeadphoneRepository.getInstance(applicationContext)
 
         setContent {
-            XM6ControllerTheme {
-                MainScreen(repository = repository)
+            val prefs = getSharedPreferences("app_settings", Context.MODE_PRIVATE)
+            val skinName = prefs.getString("theme_skin", ThemeSkin.BLACK_COPPER.name)
+            var currentSkin by remember {
+                mutableStateOf(ThemeSkin.entries.find { it.name == skinName } ?: ThemeSkin.BLACK_COPPER)
+            }
+
+            XM6ControllerTheme(themeSkin = currentSkin) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    MainScreen(
+                        repository = repository,
+                        currentSkin = currentSkin,
+                        onSkinChanged = { skin ->
+                            currentSkin = skin
+                            prefs.edit().putString("theme_skin", skin.name).apply()
+                        }
+                    )
+                }
             }
         }
     }
@@ -167,7 +194,11 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(repository: HeadphoneRepository) {
+fun MainScreen(
+    repository: HeadphoneRepository,
+    currentSkin: ThemeSkin,
+    onSkinChanged: (ThemeSkin) -> Unit
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -185,12 +216,16 @@ fun MainScreen(repository: HeadphoneRepository) {
     val diagnosticLogs by repository.diagnosticLogs.collectAsState()
     val diagnosticEntries by repository.diagnosticEntries.collectAsState()
 
+    val iso226Enabled by repository.dynamicBassManager.isEnabled.collectAsState()
+    val iso226Offset by repository.dynamicBassManager.currentCompensationOffset.collectAsState()
+
     var selectedTab by remember { mutableIntStateOf(0) }
     var foregroundServiceEnabled by remember { mutableStateOf(false) }
     var connectionErrorDialog by remember { mutableStateOf<String?>(null) }
     var pastePeqDialogVisible by remember { mutableStateOf(false) }
     var autoEqCatalogVisible by remember { mutableStateOf(false) }
     var savePresetDialogVisible by remember { mutableStateOf(false) }
+    var acousticSealDialogVisible by remember { mutableStateOf(false) }
     var newPresetName by remember { mutableStateOf("") }
 
     // File picker launcher for .peqdb, .json, and .txt files
@@ -372,6 +407,14 @@ fun MainScreen(repository: HeadphoneRepository) {
                 }
             }
 
+            // Hardware Theme Finish Selector
+            item {
+                ThemeSkinSelectorCard(
+                    currentSkin = currentSkin,
+                    onSelectSkin = onSkinChanged
+                )
+            }
+
             // Always-visible Header Card: Device Status Dashboard with Animated Waveform
             item {
                 DeviceStatusCard(
@@ -542,9 +585,17 @@ fun MainScreen(repository: HeadphoneRepository) {
                         }
                     )
                 }
+
+                item {
+                    DynamicBassCard(
+                        isEnabled = iso226Enabled,
+                        activeCompensationOffset = iso226Offset,
+                        onToggle = { enabled -> repository.dynamicBassManager.setEnabled(enabled) }
+                    )
+                }
             }
 
-            // TAB 2: Sound Features (Speak-to-Chat, DSEE, Wearing Pause)
+            // TAB 2: Sound Features (Speak-to-Chat, DSEE, Wearing Pause, Acoustic Seal)
             if (selectedTab == 2) {
                 item {
                     SoundFeaturesCard(
@@ -565,6 +616,12 @@ fun MainScreen(repository: HeadphoneRepository) {
                         onSelectAutoPowerOff = { index -> scope.launch { repository.setAutoPowerOff(index) } },
                         onToggleTouchSensor = { enabled -> scope.launch { repository.setTouchSensor(enabled) } },
                         onToggleSoundQuality = { quality -> scope.launch { repository.setSoundQualityPriority(quality) } }
+                    )
+                }
+
+                item {
+                    AcousticSealCard(
+                        onOpenTest = { acousticSealDialogVisible = true }
                     )
                 }
             }
@@ -627,6 +684,13 @@ fun MainScreen(repository: HeadphoneRepository) {
                     }
                     autoEqCatalogVisible = false
                 }
+            )
+        }
+
+        // Acoustic Seal Fit Test Modal Dialog
+        if (acousticSealDialogVisible) {
+            AcousticSealDialog(
+                onDismissRequest = { acousticSealDialogVisible = false }
             )
         }
 
@@ -877,14 +941,58 @@ fun TenBandEqualizerCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            // Interactive Live Frequency Response Curve Canvas
-            FrequencyResponseSplineCanvas(
-                bands = tenBandState.bands,
+            var selectedOverlayTarget by remember { mutableStateOf<String?>("Harman Over-Ear") }
+            val overlayGains = remember(selectedOverlayTarget) {
+                when (selectedOverlayTarget) {
+                    "Harman Over-Ear" -> listOf(5.5f, 4.8f, 2.5f, 0.0f, -0.8f, 0.5f, 2.8f, 6.5f, 1.5f, -1.0f)
+                    "Harman In-Ear" -> listOf(6.0f, 5.2f, 3.0f, -0.5f, -1.2f, 0.8f, 3.5f, 7.2f, 2.0f, -1.5f)
+                    "Oratory Hi-Fi" -> listOf(4.2f, 3.8f, 1.8f, -0.5f, -0.8f, 1.2f, 2.8f, 5.5f, 1.0f, -0.5f)
+                    "Rtings Neutral" -> listOf(3.5f, 2.8f, 1.2f, 0.0f, 0.0f, 0.5f, 2.0f, 4.5f, 0.5f, 0.0f)
+                    else -> null
+                }
+            }
+
+            // Reference Target Overlay Selector Chips
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(140.dp)
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Reference Overlay:", fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.SemiBold)
+                listOf("None", "Harman Over-Ear", "Harman In-Ear", "Oratory Hi-Fi", "Rtings Neutral").forEach { opt ->
+                    val isSel = (if (opt == "None") selectedOverlayTarget == null else selectedOverlayTarget == opt)
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isSel) Color(0xFF00E5FF).copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, if (isSel) Color(0xFF00E5FF) else CardBorder),
+                        modifier = Modifier.clickable { selectedOverlayTarget = if (opt == "None") null else opt }
+                    ) {
+                        Text(
+                            text = opt,
+                            fontSize = 9.sp,
+                            fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSel) Color(0xFF00E5FF) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Interactive Live Frequency Response Curve Canvas (Touch-Draggable Spline + Target Overlay)
+            InteractiveFrequencyResponseSplineCanvas(
+                bands = tenBandState.bands,
+                referenceTargetGains = overlayGains,
+                referenceTargetLabel = selectedOverlayTarget,
+                onUpdateBand = onUpdateBand,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(145.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(Color(0xFF07090E))
             )
@@ -1086,95 +1194,211 @@ fun TenBandEqualizerCard(
 }
 
 /**
- * Live Spline Frequency Response Visualizer Canvas.
+ * Interactive Live Spline Frequency Response Visualizer Canvas.
+ * Supports direct touch-dragging and tapping on filter frequency nodes with tactile haptic feedback,
+ * plus optional reference target curve dotted overlays (Harman Over-Ear, Harman In-Ear, Oratory Hi-Fi, Rtings).
+ */
+@Composable
+fun InteractiveFrequencyResponseSplineCanvas(
+    bands: List<Float>,
+    referenceTargetGains: List<Float>? = null,
+    referenceTargetLabel: String? = null,
+    onUpdateBand: ((Int, Float) -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
+    val haptic = LocalHapticFeedback.current
+    var activeDraggingIndex by remember { mutableStateOf<Int?>(null) }
+
+    Box(modifier = modifier) {
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(bands) {
+                    detectDragGestures(
+                        onDragStart = { offset ->
+                            val pointCount = bands.size
+                            if (pointCount > 0) {
+                                val stepX = size.width / (pointCount + 1)
+                                val idx = ((offset.x / stepX) - 0.5f).toInt().coerceIn(0, pointCount - 1)
+                                activeDraggingIndex = idx
+                            }
+                        },
+                        onDragEnd = { activeDraggingIndex = null },
+                        onDragCancel = { activeDraggingIndex = null },
+                        onDrag = { change, _ ->
+                            change.consume()
+                            val idx = activeDraggingIndex ?: return@detectDragGestures
+                            val midY = size.height / 2f
+                            val rawGain = ((midY - change.position.y) / (size.height * 0.45f) * 12f).coerceIn(-12f, 12f)
+                            val steppedGain = (rawGain * 2).roundToInt() / 2.0f
+                            if (steppedGain == 0.0f || (bands.indices.contains(idx) && steppedGain != bands[idx])) {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            }
+                            onUpdateBand?.invoke(idx, steppedGain)
+                        }
+                    )
+                }
+                .pointerInput(bands) {
+                    detectTapGestures { offset ->
+                        val pointCount = bands.size
+                        if (pointCount > 0) {
+                            val stepX = size.width / (pointCount + 1)
+                            val idx = ((offset.x / stepX) - 0.5f).toInt().coerceIn(0, pointCount - 1)
+                            val midY = size.height / 2f
+                            val rawGain = ((midY - offset.y) / (size.height * 0.45f) * 12f).coerceIn(-12f, 12f)
+                            val steppedGain = (rawGain * 2).roundToInt() / 2.0f
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onUpdateBand?.invoke(idx, steppedGain)
+                        }
+                    }
+                }
+        ) {
+            val width = size.width
+            val height = size.height
+            val midY = height / 2f
+
+            // Draw dB Grid lines (-10dB, 0dB, +10dB)
+            val gridYp10 = midY - (height * 0.4f)
+            val gridYm10 = midY + (height * 0.4f)
+
+            drawLine(color = Color(0xFF1E2433), start = Offset(0f, gridYp10), end = Offset(width, gridYp10), strokeWidth = 1f)
+            drawLine(color = Color(0xFF333E55), start = Offset(0f, midY), end = Offset(width, midY), strokeWidth = 1.5f)
+            drawLine(color = Color(0xFF1E2433), start = Offset(0f, gridYm10), end = Offset(width, gridYm10), strokeWidth = 1f)
+
+            val pointCount = bands.size
+            val stepX = width / (pointCount + 1)
+
+            // 1. Draw Dotted Reference Target Curve (if selected)
+            if (referenceTargetGains != null && referenceTargetGains.size == pointCount) {
+                val refPoints = referenceTargetGains.mapIndexed { i, g ->
+                    val px = stepX * (i + 1)
+                    val py = midY - (g.coerceIn(-12f, 12f) / 12f) * (height * 0.45f)
+                    Offset(px, py)
+                }
+                val refPath = Path()
+                refPath.moveTo(0f, midY)
+                for (i in refPoints.indices) {
+                    val pt = refPoints[i]
+                    if (i == 0) {
+                        refPath.cubicTo(pt.x * 0.5f, midY, pt.x * 0.5f, pt.y, pt.x, pt.y)
+                    } else {
+                        val prev = refPoints[i - 1]
+                        val cx = (prev.x + pt.x) / 2f
+                        refPath.cubicTo(cx, prev.y, cx, pt.y, pt.x, pt.y)
+                    }
+                }
+                val last = refPoints.last()
+                refPath.cubicTo((last.x + width) / 2f, last.y, (last.x + width) / 2f, midY, width, midY)
+
+                drawPath(
+                    path = refPath,
+                    color = Color(0xFF00E5FF).copy(alpha = 0.65f),
+                    style = Stroke(
+                        width = 2.2f,
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f), 0f)
+                    )
+                )
+            }
+
+            // 2. Interpolate active points across the 10 frequency centers
+            val points = mutableListOf<Offset>()
+            for (i in 0 until pointCount) {
+                val gain = bands[i].coerceIn(-12f, 12f)
+                val px = stepX * (i + 1)
+                val py = midY - (gain / 12f) * (height * 0.45f)
+                points.add(Offset(px, py))
+            }
+
+            if (points.size >= 2) {
+                val path = Path()
+                val fillPath = Path()
+
+                path.moveTo(0f, midY)
+                fillPath.moveTo(0f, midY)
+
+                for (i in points.indices) {
+                    val pt = points[i]
+                    if (i == 0) {
+                        val cx1 = pt.x * 0.5f
+                        path.cubicTo(cx1, midY, cx1, pt.y, pt.x, pt.y)
+                        fillPath.cubicTo(cx1, midY, cx1, pt.y, pt.x, pt.y)
+                    } else {
+                        val prev = points[i - 1]
+                        val cx1 = (prev.x + pt.x) / 2f
+                        path.cubicTo(cx1, prev.y, cx1, pt.y, pt.x, pt.y)
+                        fillPath.cubicTo(cx1, prev.y, cx1, pt.y, pt.x, pt.y)
+                    }
+                }
+
+                val last = points.last()
+                path.cubicTo((last.x + width) / 2f, last.y, (last.x + width) / 2f, midY, width, midY)
+                fillPath.cubicTo((last.x + width) / 2f, last.y, (last.x + width) / 2f, midY, width, midY)
+
+                fillPath.lineTo(width, height)
+                fillPath.lineTo(0f, height)
+                fillPath.close()
+
+                drawPath(
+                    path = fillPath,
+                    brush = Brush.verticalGradient(
+                        colors = listOf(SonyCopper.copy(alpha = 0.35f), Color.Transparent),
+                        startY = 0f,
+                        endY = height
+                    )
+                )
+
+                drawPath(
+                    path = path,
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(SonyGold, SonyCopper, AncGreen)
+                    ),
+                    style = Stroke(width = 3.5f, cap = StrokeCap.Round)
+                )
+
+                for (i in points.indices) {
+                    val pt = points[i]
+                    val isBeingDragged = (i == activeDraggingIndex)
+                    val rOuter = if (isBeingDragged) 8.5f else 5.5f
+                    val rInner = if (isBeingDragged) 5.5f else 3.5f
+                    drawCircle(color = Color.Black, radius = rOuter, center = pt)
+                    drawCircle(color = if (isBeingDragged) Color.White else SonyGold, radius = rInner, center = pt)
+                }
+            }
+        }
+
+        // Overlay Legend
+        if (!referenceTargetLabel.isNullOrBlank()) {
+            Row(
+                modifier = Modifier
+                    .padding(8.dp)
+                    .background(Color(0xFF0F1420).copy(alpha = 0.85f), RoundedCornerShape(6.dp))
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(modifier = Modifier.size(7.dp).background(SonyGold, CircleShape))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Active DSP", fontSize = 9.sp, color = Color.White)
+                Spacer(modifier = Modifier.width(8.dp))
+                Box(modifier = Modifier.size(7.dp).background(Color(0xFF00E5FF), CircleShape))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(referenceTargetLabel, fontSize = 9.sp, color = Color(0xFF00E5FF))
+            }
+        }
+    }
+}
+
+/**
+ * Backward compatibility alias for FrequencyResponseSplineCanvas.
  */
 @Composable
 fun FrequencyResponseSplineCanvas(
     bands: List<Float>,
     modifier: Modifier = Modifier
 ) {
-    Canvas(modifier = modifier) {
-        val width = size.width
-        val height = size.height
-        val midY = height / 2f
-
-        // Draw dB Grid lines (-10dB, 0dB, +10dB)
-        val gridYp10 = midY - (height * 0.4f)
-        val gridYm10 = midY + (height * 0.4f)
-
-        drawLine(color = Color(0xFF1E2433), start = Offset(0f, gridYp10), end = Offset(width, gridYp10), strokeWidth = 1f)
-        drawLine(color = Color(0xFF333E55), start = Offset(0f, midY), end = Offset(width, midY), strokeWidth = 1.5f)
-        drawLine(color = Color(0xFF1E2433), start = Offset(0f, gridYm10), end = Offset(width, gridYm10), strokeWidth = 1f)
-
-        // Interpolate points across the 10 frequency centers
-        val pointCount = bands.size
-        val stepX = width / (pointCount + 1)
-        val points = mutableListOf<Offset>()
-
-        for (i in 0 until pointCount) {
-            val gain = bands[i].coerceIn(-12f, 12f)
-            val px = stepX * (i + 1)
-            val py = midY - (gain / 12f) * (height * 0.45f)
-            points.add(Offset(px, py))
-        }
-
-        if (points.size >= 2) {
-            val path = Path()
-            val fillPath = Path()
-
-            path.moveTo(0f, midY)
-            fillPath.moveTo(0f, midY)
-
-            // Connect using cubic bezier curves
-            for (i in 0 until points.size) {
-                val pt = points[i]
-                if (i == 0) {
-                    val cx1 = pt.x * 0.5f
-                    path.cubicTo(cx1, midY, cx1, pt.y, pt.x, pt.y)
-                    fillPath.cubicTo(cx1, midY, cx1, pt.y, pt.x, pt.y)
-                } else {
-                    val prev = points[i - 1]
-                    val cx1 = (prev.x + pt.x) / 2f
-                    path.cubicTo(cx1, prev.y, cx1, pt.y, pt.x, pt.y)
-                    fillPath.cubicTo(cx1, prev.y, cx1, pt.y, pt.x, pt.y)
-                }
-            }
-
-            val last = points.last()
-            path.cubicTo((last.x + width) / 2f, last.y, (last.x + width) / 2f, midY, width, midY)
-            fillPath.cubicTo((last.x + width) / 2f, last.y, (last.x + width) / 2f, midY, width, midY)
-
-            // Close fill path
-            fillPath.lineTo(width, height)
-            fillPath.lineTo(0f, height)
-            fillPath.close()
-
-            // Draw glowing ambient fill under curve
-            drawPath(
-                path = fillPath,
-                brush = Brush.verticalGradient(
-                    colors = listOf(SonyCopper.copy(alpha = 0.35f), Color.Transparent),
-                    startY = 0f,
-                    endY = height
-                )
-            )
-
-            // Draw primary curve stroke
-            drawPath(
-                path = path,
-                brush = Brush.horizontalGradient(
-                    colors = listOf(SonyGold, SonyCopper, AncGreen)
-                ),
-                style = Stroke(width = 3.5f, cap = StrokeCap.Round)
-            )
-
-            // Draw control nodes
-            for (pt in points) {
-                drawCircle(color = Color.Black, radius = 5.5f, center = pt)
-                drawCircle(color = SonyGold, radius = 3.5f, center = pt)
-            }
-        }
-    }
+    InteractiveFrequencyResponseSplineCanvas(
+        bands = bands,
+        modifier = modifier
+    )
 }
 
 /**
@@ -1421,36 +1645,95 @@ fun DeviceStatusCard(
             // Universal Battery Telemetry (Over-Ear & TWS)
             if (connectionState.isConnected) {
                 Spacer(modifier = Modifier.height(14.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF4CAF50), modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        val battText = if (batteryState.isAvailable) {
-                            "Battery: ${batteryState.displayString}"
-                        } else {
-                            "Battery: Querying telemetry..."
-                        }
-                        Text(
-                            text = battText,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-
-                    IconButton(
-                        onClick = onRefreshBattery,
-                        modifier = Modifier.size(28.dp)
+                if (batteryState.isTws || deviceCapabilities.hasMultiBattery) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                            .padding(12.dp)
                     ) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh Battery", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Earbuds & Charging Case Telemetry",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            IconButton(
+                                onClick = onRefreshBattery,
+                                modifier = Modifier.size(26.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Refresh,
+                                    contentDescription = "Refresh",
+                                    modifier = Modifier.size(15.dp),
+                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularBatteryGauge(
+                                label = "Left Earbud",
+                                level = batteryState.levelLeft,
+                                isCharging = batteryState.isLeftCharging,
+                                color = AncGreen
+                            )
+                            CircularBatteryGauge(
+                                label = "Right Earbud",
+                                level = batteryState.levelRight,
+                                isCharging = batteryState.isRightCharging,
+                                color = SonyCopper
+                            )
+                            CircularBatteryGauge(
+                                label = "Charging Case",
+                                level = batteryState.levelCase,
+                                isCharging = batteryState.isCaseCharging,
+                                color = SonyGold
+                            )
+                        }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF4CAF50), modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            val battText = if (batteryState.isAvailable) {
+                                "Battery: ${batteryState.displayString}"
+                            } else {
+                                "Battery: Querying telemetry..."
+                            }
+                            Text(
+                                text = battText,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+
+                        IconButton(
+                            onClick = onRefreshBattery,
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Refresh Battery", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                        }
                     }
                 }
             }
@@ -2466,6 +2749,330 @@ fun AutoEqCatalogDialog(
         confirmButton = {
             TextButton(onClick = onDismiss) {
                 Text("Close")
+            }
+        }
+    )
+}
+
+// -------------------------------------------------------------------------------------------------
+// TWS CIRCULAR BATTERY GAUGE
+// -------------------------------------------------------------------------------------------------
+
+@Composable
+fun CircularBatteryGauge(
+    label: String,
+    level: Int,
+    isCharging: Boolean,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier
+    ) {
+        Box(
+            modifier = Modifier.size(54.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val strokeWidth = 5.dp.toPx()
+                drawCircle(
+                    color = color.copy(alpha = 0.2f),
+                    style = Stroke(width = strokeWidth)
+                )
+                val sweep = (level.coerceIn(0, 100) / 100f) * 360f
+                drawArc(
+                    color = color,
+                    startAngle = -90f,
+                    sweepAngle = sweep,
+                    useCenter = false,
+                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                )
+            }
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = if (level >= 0) "$level%" else "--",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                if (isCharging) {
+                    Icon(
+                        Icons.Default.Bolt,
+                        contentDescription = "Charging",
+                        tint = SonyGold,
+                        modifier = Modifier.size(10.dp)
+                    )
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = label,
+            fontSize = 10.sp,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
+        )
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+// THEME FINISH / SKIN SELECTOR COMPOSABLE
+// -------------------------------------------------------------------------------------------------
+
+@Composable
+fun ThemeSkinSelectorCard(
+    currentSkin: ThemeSkin,
+    onSelectSkin: (ThemeSkin) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, CardBorder, RoundedCornerShape(16.dp)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Palette, contentDescription = null, tint = SonyCopper, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Hardware Theme Finishes", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                }
+                Text("v2.0.0", fontSize = 10.sp, color = SonyCopper, fontWeight = FontWeight.Bold)
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ThemeSkin.entries.forEach { skin ->
+                    val isSel = (skin == currentSkin)
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (isSel) skin.accentCopper else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, if (isSel) skin.primaryGold else CardBorder),
+                        modifier = Modifier.clickable { onSelectSkin(skin) }
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Box(modifier = Modifier.size(10.dp).background(skin.primaryGold, CircleShape))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = skin.displayName,
+                                fontSize = 11.sp,
+                                fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSel) Color.Black else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+// ISO 226 EQUAL-LOUDNESS DYNAMIC BASS CARD
+// -------------------------------------------------------------------------------------------------
+
+@Composable
+fun DynamicBassCard(
+    isEnabled: Boolean,
+    activeCompensationOffset: Int,
+    onToggle: (Boolean) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, CardBorder, RoundedCornerShape(16.dp)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.GraphicEq, contentDescription = null, tint = SonyCopper)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            text = "ISO 226 Dynamic Bass Compensation",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp
+                        )
+                        Text(
+                            text = if (isEnabled) "Active: +$activeCompensationOffset dB Clear Bass at current volume" else "Disabled (Manual Clear Bass)",
+                            fontSize = 11.sp,
+                            color = if (isEnabled) AncGreen else Color.Gray,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+                Switch(
+                    checked = isEnabled,
+                    onCheckedChange = onToggle,
+                    colors = SwitchDefaults.colors(checkedThumbColor = SonyGold, checkedTrackColor = SonyCopper)
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Based on ISO 226 / Fletcher-Munson equal-loudness contours: human ear sensitivity to sub-bass decreases drastically at low playback volumes. This dynamically offsets Clear Bass by +1 to +4 dB at 10%–40% volume, gradually tapering to zero at higher listening levels.",
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
+                lineHeight = 15.sp
+            )
+        }
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+// ACOUSTIC SEAL TEST CARD & MODAL DIALOG
+// -------------------------------------------------------------------------------------------------
+
+@Composable
+fun AcousticSealCard(
+    onOpenTest: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, CardBorder, RoundedCornerShape(16.dp)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Acoustic Seal & Fit Verification",
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp
+                )
+                Text(
+                    text = "Verify silicone/foam eartip acoustic canal seal with calibrated low-frequency sweeps.",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                )
+            }
+            Button(
+                onClick = onOpenTest,
+                colors = ButtonDefaults.buttonColors(containerColor = SonyCopper),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 2.dp),
+                modifier = Modifier.height(32.dp)
+            ) {
+                Icon(Icons.Default.Hearing, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.Black)
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Test Fit", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+            }
+        }
+    }
+}
+
+@Composable
+fun AcousticSealDialog(
+    onDismissRequest: () -> Unit
+) {
+    val tester = remember { AcousticSealTester }
+    var activeFreq by remember { mutableIntStateOf(0) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            tester.release()
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = {
+            tester.stop()
+            onDismissRequest()
+        },
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Hearing, contentDescription = null, tint = SonyCopper)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Acoustic Seal & Fit Check", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            }
+        },
+        text = {
+            Column {
+                Text(
+                    "Play calibrated test tones to verify if your ear tips achieve an airtight sub-bass seal:",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                listOf(
+                    Pair(40, "40 Hz Deep Sub-Bass (Seal Leakage Test)"),
+                    Pair(100, "100 Hz Punch & Mid-Bass Impact"),
+                    Pair(250, "250 Hz Low-Mid Body & Warmth"),
+                    Pair(1000, "1000 Hz Midrange Reference (0 dB)")
+                ).forEach { (freq, desc) ->
+                    val isPlaying = (activeFreq == freq)
+                    Button(
+                        onClick = {
+                            if (isPlaying) {
+                                tester.stop()
+                                activeFreq = 0
+                            } else {
+                                tester.playTone(freq, 2500)
+                                activeFreq = freq
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isPlaying) SonyGold else MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 3.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = if (isPlaying) "Playing $freq Hz Tone..." else desc,
+                            fontSize = 11.sp,
+                            fontWeight = if (isPlaying) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isPlaying) Color.Black else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    "Fit Evaluation:\n• If 40 Hz is faint or barely audible, acoustic seal is compromised. Try larger silicone or memory foam tips.\n• If 40 Hz produces deep, tactile sub-bass vibration, optimal acoustic seal is confirmed.",
+                    fontSize = 11.sp,
+                    color = Color.Gray,
+                    lineHeight = 15.sp
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    tester.stop()
+                    onDismissRequest()
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = SonyCopper)
+            ) {
+                Text("Done")
             }
         }
     )

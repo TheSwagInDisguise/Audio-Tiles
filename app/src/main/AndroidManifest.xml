@@ -52,7 +52,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Quick Settings Tile Service -->
+        <!-- Primary Quick Settings Tile Service: Noise Control Cycling -->
         <service
             android:name=".service.XM6TileService"
             android:exported="true"
@@ -63,6 +63,84 @@
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
             </intent-filter>
         </service>
+
+        <!-- Secondary Quick Settings Tile: Speak-to-Chat -->
+        <service
+            android:name=".service.SpeakToChatTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_s2c"
+            android:label="@string/tile_s2c_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <!-- Secondary Quick Settings Tile: Clear Bass Stepper -->
+        <service
+            android:name=".service.ClearBassTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_bass"
+            android:label="@string/tile_clearbass_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <!-- Secondary Quick Settings Tile: Voice Focus -->
+        <service
+            android:name=".service.FocusOnVoiceTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_voice"
+            android:label="@string/tile_voice_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <!-- Secondary Quick Settings Tile: Sound Quality Priority -->
+        <service
+            android:name=".service.SoundQualityTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_ldac"
+            android:label="@string/tile_soundquality_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <!-- App Widget: Compact 2x1 Provider -->
+        <receiver
+            android:name=".widget.SonyAudioCompactWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_compact_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.sony.xm6controller.widget.ACTION_CYCLE_MODE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_compact_info" />
+        </receiver>
+
+        <!-- App Widget: Studio 4x2 Provider -->
+        <receiver
+            android:name=".widget.SonyAudioStudioWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_studio_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.sony.xm6controller.widget.ACTION_SET_MODE" />
+                <action android:name="com.sony.xm6controller.widget.ACTION_TOGGLE_S2C" />
+                <action android:name="com.sony.xm6controller.widget.ACTION_TOGGLE_BYPASS" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_studio_info" />
+        </receiver>
 
         <!-- Foreground Service for Persistent Link / ColorOS Background Survival -->
         <service

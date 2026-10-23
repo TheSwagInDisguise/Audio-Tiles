@@ -31,6 +31,15 @@ class HeadphoneRepository(private val context: Context) {
 
     val autoEqCatalog: List<AutoEqCatalogEntry> = AutoEqCatalog.entries
 
+    val dynamicBassManager: DynamicBassManager by lazy { DynamicBassManager(context, this) }
+
+    fun notifyWidgetUpdates() {
+        try {
+            com.sony.xm6controller.widget.SonyAudioCompactWidgetProvider.notifyUpdate(context)
+            com.sony.xm6controller.widget.SonyAudioStudioWidgetProvider.notifyUpdate(context)
+        } catch (_: Throwable) {}
+    }
+
     fun isBluetoothAvailable(): Boolean = scanner.isBluetoothEnabled()
     fun hasBluetoothPermission(): Boolean = scanner.hasBluetoothPermission()
     fun getPairedDevices(): List<BluetoothDevice> = scanner.getPairedDevices()
@@ -39,37 +48,64 @@ class HeadphoneRepository(private val context: Context) {
 
     fun exportDiagnosticReport(): String = connectionManager.exportDiagnosticReport()
     fun clearDiagnosticLogs() = connectionManager.clearDiagnosticLogs()
-    fun toggleEqBypass() = connectionManager.toggleEqBypass()
+    fun toggleEqBypass() {
+        connectionManager.toggleEqBypass()
+        notifyWidgetUpdates()
+    }
     fun saveUserPreset(name: String, state: TenBandEqState) = connectionManager.saveUserPreset(name, state)
     fun deleteUserPreset(presetId: String) = connectionManager.deleteUserPreset(presetId)
     fun loadUserPresets(): List<UserEqPreset> = connectionManager.loadUserPresets()
 
     suspend fun connect(target: BluetoothDevice? = null): Result<Unit> {
-        return connectionManager.connect(target)
+        val res = connectionManager.connect(target)
+        notifyWidgetUpdates()
+        return res
     }
 
     suspend fun disconnect() {
         connectionManager.disconnect()
+        notifyWidgetUpdates()
     }
 
     suspend fun setMode(mode: NoiseControlMode): Result<NoiseControlMode> {
-        return connectionManager.setMode(mode)
+        val res = connectionManager.setMode(mode)
+        notifyWidgetUpdates()
+        return res
     }
+
+    suspend fun setNoiseControlMode(mode: NoiseControlMode): Result<NoiseControlMode> = setMode(mode)
 
     suspend fun cycleMode(): Result<NoiseControlMode> {
-        return connectionManager.cycleMode()
+        val res = connectionManager.cycleMode()
+        notifyWidgetUpdates()
+        return res
     }
 
+    suspend fun cycleNoiseControlMode(): Result<NoiseControlMode> = cycleMode()
+
     suspend fun setAmbientLevel(level: Int): Result<Unit> {
-        return connectionManager.setAmbientLevel(level)
+        val res = connectionManager.setAmbientLevel(level)
+        notifyWidgetUpdates()
+        return res
     }
 
     suspend fun setFocusOnVoice(enabled: Boolean): Result<Unit> {
-        return connectionManager.setFocusOnVoice(enabled)
+        val res = connectionManager.setFocusOnVoice(enabled)
+        notifyWidgetUpdates()
+        return res
+    }
+
+    suspend fun setAmbientSound(level: Int, focusOnVoice: Boolean): Result<Unit> {
+        val r1 = connectionManager.setAmbientLevel(level)
+        val r2 = connectionManager.setFocusOnVoice(focusOnVoice)
+        notifyWidgetUpdates()
+        return if (r1.isSuccess && r2.isSuccess) Result.success(Unit) else (if (r1.isFailure) r1 else r2)
     }
 
     suspend fun setWindNoiseReduction(enabled: Boolean): Result<Unit> {
-        return connectionManager.setWindNoiseReduction(enabled)
+        val res = connectionManager.setWindNoiseReduction(enabled)
+        notifyWidgetUpdates()
+        return res
     }
 
     suspend fun queryBattery(): Result<Unit> {
@@ -79,11 +115,15 @@ class HeadphoneRepository(private val context: Context) {
     // --- Sound Connect Features ---
 
     suspend fun setEqualizerPreset(preset: EqPreset): Result<Unit> {
-        return connectionManager.setEqualizerPreset(preset)
+        val res = connectionManager.setEqualizerPreset(preset)
+        notifyWidgetUpdates()
+        return res
     }
 
     suspend fun setEqualizerBands(preset: EqPreset, clearBass: Int, bands: List<Int>): Result<Unit> {
-        return connectionManager.setEqualizerBands(preset, clearBass, bands)
+        val res = connectionManager.setEqualizerBands(preset, clearBass, bands)
+        notifyWidgetUpdates()
+        return res
     }
 
     suspend fun queryEqualizer(): Result<Unit> {
@@ -91,15 +131,21 @@ class HeadphoneRepository(private val context: Context) {
     }
 
     suspend fun applyTenBandEq(state: TenBandEqState): Result<Unit> {
-        return connectionManager.applyTenBandEq(state)
+        val res = connectionManager.applyTenBandEq(state)
+        notifyWidgetUpdates()
+        return res
     }
 
     suspend fun importAndApplyPeqProfile(profile: PeqProfile): Result<Unit> {
-        return connectionManager.importAndApplyPeqProfile(profile)
+        val res = connectionManager.importAndApplyPeqProfile(profile)
+        notifyWidgetUpdates()
+        return res
     }
 
     suspend fun setSpeakToChat(enabled: Boolean, sensitivity: Int = 1, timeout: Int = 1): Result<Unit> {
-        return connectionManager.setSpeakToChat(enabled, sensitivity, timeout)
+        val res = connectionManager.setSpeakToChat(enabled, sensitivity, timeout)
+        notifyWidgetUpdates()
+        return res
     }
 
     suspend fun setDsee(enabled: Boolean): Result<Unit> {
@@ -119,7 +165,9 @@ class HeadphoneRepository(private val context: Context) {
     }
 
     suspend fun setSoundQualityPriority(qualityPriority: Boolean): Result<Unit> {
-        return connectionManager.setSoundQualityPriority(qualityPriority)
+        val res = connectionManager.setSoundQualityPriority(qualityPriority)
+        notifyWidgetUpdates()
+        return res
     }
 
     companion object {

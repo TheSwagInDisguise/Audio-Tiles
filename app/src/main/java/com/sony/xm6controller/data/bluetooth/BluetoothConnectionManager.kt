@@ -217,7 +217,7 @@ class BluetoothConnectionManager private constructor(private val context: Contex
             appendLine("       SONY AUDIO TILES DIAGNOSTIC DUMP REPORT     ")
             appendLine("==================================================")
             appendLine("Generated At: ${java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ", java.util.Locale.US).format(java.util.Date())}")
-            appendLine("App Version: 1.2.0 (Code 5)")
+            appendLine("App Version: 2.0.0 (Code 20000)")
             appendLine("Android OS: Android ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})")
             appendLine("Device Hardware: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL} (${android.os.Build.DEVICE})")
             appendLine()

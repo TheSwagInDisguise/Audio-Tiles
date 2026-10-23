@@ -321,4 +321,48 @@ class MdrProtocolTest {
         val hw = state.toSonyHardwareEq()
         assertTrue(hw.clearBass in -10..10)
     }
+
+    @Test
+    fun testThemeSkinDefinitions() {
+        val skins = com.sony.xm6controller.domain.ThemeSkin.entries
+        assertEquals(4, skins.size)
+        assertTrue(skins.any { it.name == "BLACK_COPPER" })
+        assertTrue(skins.any { it.name == "PLATINUM_SILVER" })
+        assertTrue(skins.any { it.name == "SMOKY_PINK" })
+        assertTrue(skins.any { it.name == "MIDNIGHT_NAVY" })
+    }
+
+    @Test
+    fun testDynamicBassIso226Calculation() {
+        // Below or equal to 20% volume -> +4 dB Clear Bass
+        assertEquals(4, com.sony.xm6controller.domain.DynamicBassManager.calculateCompensation(0.10f))
+        assertEquals(4, com.sony.xm6controller.domain.DynamicBassManager.calculateCompensation(0.20f))
+
+        // Between 21% and 40% volume -> +3 dB Clear Bass
+        assertEquals(3, com.sony.xm6controller.domain.DynamicBassManager.calculateCompensation(0.25f))
+        assertEquals(3, com.sony.xm6controller.domain.DynamicBassManager.calculateCompensation(0.40f))
+
+        // Between 41% and 60% volume -> +1 dB Clear Bass
+        assertEquals(1, com.sony.xm6controller.domain.DynamicBassManager.calculateCompensation(0.50f))
+        assertEquals(1, com.sony.xm6controller.domain.DynamicBassManager.calculateCompensation(0.60f))
+
+        // Above 60% volume -> 0 dB (Flat reference)
+        assertEquals(0, com.sony.xm6controller.domain.DynamicBassManager.calculateCompensation(0.70f))
+        assertEquals(0, com.sony.xm6controller.domain.DynamicBassManager.calculateCompensation(1.00f))
+    }
+
+    @Test
+    fun testAcousticSealToneBufferGeneration() {
+        val buffer40Hz = com.sony.xm6controller.domain.AcousticSealTester.generateSineWave(
+            frequencyHz = 40f,
+            sampleRate = 44100,
+            durationMs = 500
+        )
+        // 44100 * 0.5s = 22050 samples
+        assertEquals(22050, buffer40Hz.size)
+        // First sample starts at 0 due to fade-in envelope
+        assertEquals(0.toShort(), buffer40Hz[0])
+        // Has non-zero audio content
+        assertTrue(buffer40Hz.any { it != 0.toShort() })
+    }
 }

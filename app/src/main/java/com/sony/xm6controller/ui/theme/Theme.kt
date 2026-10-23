@@ -8,6 +8,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import com.sony.xm6controller.domain.ThemeSkin
 
 private val DarkColorScheme = darkColorScheme(
     primary = PrimaryDark,
@@ -21,7 +22,8 @@ private val DarkColorScheme = darkColorScheme(
 @Composable
 fun XM6ControllerTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
+    themeSkin: ThemeSkin = ThemeSkin.BLACK_COPPER,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
@@ -29,7 +31,14 @@ fun XM6ControllerTheme(
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-        else -> DarkColorScheme
+        else -> darkColorScheme(
+            primary = themeSkin.primaryGold,
+            onPrimary = OnPrimary,
+            background = BackgroundDark,
+            surface = SurfaceDark,
+            surfaceVariant = SonySurfaceVariant,
+            secondary = themeSkin.accentCopper
+        )
     }
 
     MaterialTheme(
@@ -37,3 +46,4 @@ fun XM6ControllerTheme(
         content = content
     )
 }
+

@@ -4,4 +4,16 @@
     <string name="tile_subtitle_nc">Noise Cancelling</string>
     <string name="tile_subtitle_ambient">Ambient Sound</string>
     <string name="tile_subtitle_off">Off</string>
+
+    <!-- Secondary Quick Settings Tiles -->
+    <string name="tile_s2c_label">Speak-to-Chat</string>
+    <string name="tile_clearbass_label">Clear Bass</string>
+    <string name="tile_voice_label">Voice Focus</string>
+    <string name="tile_soundquality_label">Sound Quality</string>
+
+    <!-- App Widgets -->
+    <string name="widget_compact_name">Sony Audio 2x1</string>
+    <string name="widget_compact_desc">Compact noise control mode &amp; battery indicator</string>
+    <string name="widget_studio_name">Sony Studio 4x2</string>
+    <string name="widget_studio_desc">Complete noise control, battery levels &amp; audio presets</string>
 </resources>

@@ -16,13 +16,23 @@ It communicates directly with your headset over Bluetooth Classic RFCOMM (SPP) u
 
 ## Features
 
-### 1. Instant Quick Settings Tile
-- Toggle noise control modes directly from your notification shade:
+### 1. Instant Quick Settings Tiles
+- **Primary Noise Control Tile**:
+  Toggle noise control modes directly from your notification shade:
   $$\text{Noise Cancelling (NC On)} \longrightarrow \text{Ambient Sound (Ambient)} \longrightarrow \text{Off (ANC Off)} \longrightarrow \text{Noise Cancelling}$$
-- Supports customizable cycle schemes: 3-way (`NC → Ambient → Off`), 2-way (`NC ↔ Ambient`), or direct (`NC ↔ Off`).
-- Syncs state in real time with physical headphone button presses (`0x69` notification frames).
+  Supports customizable cycle schemes: 3-way (`NC → Ambient → Off`), 2-way (`NC ↔ Ambient`), or direct (`NC ↔ Off`).
+- **Speak-to-Chat Tile**: One-tap toggle for Sony's hands-free conversational voice passthrough.
+- **Clear Bass Stepper Tile**: Step through hardware sub-bass boost levels (-10 to +10 dB) directly from quick settings.
+- **Voice Focus Tile**: Emphasize human voice frequencies while attenuating ambient noise.
+- **Sound Quality Priority Tile**: Switch instantly between LDAC (990 kbps high-res priority) and connection stability priority.
 
-### 2. 10-Band Graphic Equalizer & PEQ Studio
+### 2. Home Screen Widgets
+- **2x1 Compact Widget**: Real-time connection badge, single-tap ANC mode toggle, and live battery level.
+- **4x2 Studio Dashboard Widget**: Multi-cell battery gauges (Left, Right, Case), segmented ANC mode switcher, Clear Bass quick stepper, and Speak-to-Chat toggle.
+
+### 3. 10-Band Graphic Equalizer, Interactive Spline & PEQ Studio
+- **Interactive Spline Canvas**: Directly touch-drag or tap frequency filter nodes with tactile haptic feedback and real-time response curve rendering.
+- **Reference Target Curve Overlays**: Visual dotted comparison curves for Harman Target Over-Ear, Harman In-Ear, Oratory Hi-Fi, and Rtings Neutral.
 - **10 ISO Center Frequencies**: 31Hz, 63Hz, 125Hz, 250Hz, 500Hz, 1kHz, 2kHz, 4kHz, 8kHz, 16kHz ($\pm 12\text{ dB}$).
 - **Hardware Downsampling**: Automatically downsamples 10-band adjustments and continuous curves to Sony's hardware DSP (Clear Bass + 5 hardware bands: 400Hz, 1kHz, 2.5kHz, 6.3kHz, 16kHz).
 - **A/B Audition (Bypass)**: Toggle between Flat 0 dB and your active EQ profile with one tap to compare sound signatures in real-time.
@@ -30,7 +40,13 @@ It communicates directly with your headset over Bluetooth Classic RFCOMM (SPP) u
 - **Custom Profile Import**: Load `.peqdb`, JSON, and AutoEq / EqualizerAPO parametric text files.
 - **Local Preset Library**: Save, load, and manage unlimited custom sound profiles locally.
 
-### 3. Sound Connect Parity
+### 4. Smart Audio & Automations
+- **ISO 226 Dynamic Bass (Equal-Loudness)**: Automatically compensates human hearing sub-bass sensitivity roll-off at low listening levels (10%–40% volume) according to ISO 226 / Fletcher-Munson contours, tapering back to flat at louder volumes.
+- **Acoustic Seal & Fit Verification Tool**: Real-time diagnostic tone generator producing calibrated $40\text{Hz}$ deep sub-bass, $100\text{Hz}$ punch, $250\text{Hz}$ low-mid, and $1\text{kHz}$ reference sine waves to verify silicone/foam ear tip acoustic canal seal.
+- **Hardware Theme Finishes**: Custom visual skins matching Sony official headphone colors (`Black & Brushed Copper`, `Platinum Silver & Ice`, `Smoky Pink & Rose`, `Midnight Navy & Brass`).
+- **TWS Circular Battery Gauges**: Animated circular progress rings for Left earbud %, Right earbud %, and Smart Case % with live charging badges.
+
+### 5. Sound Connect Parity
 - **Clear Bass**: Dedicated sub-woofer level control (-10 to +10).
 - **Speak-to-Chat**: Automatic ambient passthrough when speaking.
 - **DSEE Extreme**: AI high-frequency audio restoration.
@@ -38,11 +54,11 @@ It communicates directly with your headset over Bluetooth Classic RFCOMM (SPP) u
 - **Auto Power-Off**: Configurable idle standby countdown.
 - **Multi-Cell Battery**: Left earbud %, Right earbud %, and Case % telemetry for TWS models.
 
-### 4. Diagnostics & Testing
+### 6. Diagnostics & Testing
 - **Real-Time Packet Stream**: Live monitor of TX, RX, and ACK frames with hex inspection.
 - **Diagnostic Dump Export**: One-tap report generator bundling device name, address, capabilities, active telemetry, and recent packet logs for troubleshooting.
 
-### 5. ColorOS / Oppo Find X9 Ultra Optimizations
+### 7. ColorOS / Oppo Find X9 Ultra Optimizations
 - CPU WakeLock safeguard prevents process suspension when closing the notification shade.
 - Multi-tier RFCOMM fallback (Standard SPP &rarr; Sony V2 UUID &rarr; Insecure RFCOMM &rarr; Direct channel reflection).
 - 120-second idle power-saving socket tear-down.
