@@ -3214,7 +3214,7 @@ fun SettingsDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("Sony Audio Tiles", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    Text("v2.0.0 (Build 20000)", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                    Text("v2.0.1 (Build 20001)", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
                 }
             }
         },
