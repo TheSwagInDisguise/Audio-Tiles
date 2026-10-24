@@ -9,7 +9,7 @@ A lightweight, zero-telemetry Android companion app targeting **Android 14+ (API
 ```text
 Official v2.0.1 Release Verification:
 Asset:   Sony-Audio-Tiles-v2.0.1.apk (11.90 MB)
-SHA-256: [Computing on release deployment...]
+SHA-256: a50315d83c3dc80000c154c2785653393e9f8ff9de0c09abfa9416298d0221cf
 ```
 
 ---
