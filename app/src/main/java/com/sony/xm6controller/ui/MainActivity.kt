@@ -1213,6 +1213,8 @@ fun InteractiveFrequencyResponseSplineCanvas(
     modifier: Modifier = Modifier
 ) {
     val haptic = LocalHapticFeedback.current
+    val copperColor = SonyCopper
+    val goldColor = SonyGold
     var activeDraggingIndex by remember { mutableStateOf<Int?>(null) }
 
     Box(modifier = modifier) {
@@ -1347,7 +1349,7 @@ fun InteractiveFrequencyResponseSplineCanvas(
                 drawPath(
                     path = fillPath,
                     brush = Brush.verticalGradient(
-                        colors = listOf(SonyCopper.copy(alpha = 0.35f), Color.Transparent),
+                        colors = listOf(copperColor.copy(alpha = 0.35f), Color.Transparent),
                         startY = 0f,
                         endY = height
                     )
@@ -1356,7 +1358,7 @@ fun InteractiveFrequencyResponseSplineCanvas(
                 drawPath(
                     path = path,
                     brush = Brush.horizontalGradient(
-                        colors = listOf(SonyGold, SonyCopper, AncGreen)
+                        colors = listOf(goldColor, copperColor, AncGreen)
                     ),
                     style = Stroke(width = 3.5f, cap = StrokeCap.Round)
                 )
@@ -1367,7 +1369,7 @@ fun InteractiveFrequencyResponseSplineCanvas(
                     val rOuter = if (isBeingDragged) 8.5f else 5.5f
                     val rInner = if (isBeingDragged) 5.5f else 3.5f
                     drawCircle(color = Color.Black, radius = rOuter, center = pt)
-                    drawCircle(color = if (isBeingDragged) Color.White else SonyGold, radius = rInner, center = pt)
+                    drawCircle(color = if (isBeingDragged) Color.White else goldColor, radius = rInner, center = pt)
                 }
             }
         }
@@ -3149,7 +3151,7 @@ fun SettingsDialog(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Column {
-                            Text(text = scheme.displayName, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            Text(text = scheme.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                             Text(text = scheme.description, fontSize = 10.sp, color = Color.Gray)
                         }
                     }
