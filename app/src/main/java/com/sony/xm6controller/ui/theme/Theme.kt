@@ -7,6 +7,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import com.sony.xm6controller.domain.ThemeSkin
 
@@ -33,11 +34,17 @@ fun XM6ControllerTheme(
         }
         else -> darkColorScheme(
             primary = themeSkin.primaryGold,
-            onPrimary = OnPrimary,
-            background = BackgroundDark,
-            surface = SurfaceDark,
-            surfaceVariant = SonySurfaceVariant,
-            secondary = themeSkin.accentCopper
+            onPrimary = Color.Black,
+            secondary = themeSkin.accentCopper,
+            onSecondary = Color.Black,
+            background = themeSkin.backgroundObsidian,
+            onBackground = Color(0xFFF1F5F9),
+            surface = themeSkin.surfaceDark,
+            onSurface = Color(0xFFF8FAFC),
+            surfaceVariant = themeSkin.surfaceDark,
+            onSurfaceVariant = Color(0xFFCBD5E1),
+            outline = themeSkin.cardBorder,
+            outlineVariant = themeSkin.cardBorder.copy(alpha = 0.5f)
         )
     }
 
@@ -46,4 +53,5 @@ fun XM6ControllerTheme(
         content = content
     )
 }
+
 

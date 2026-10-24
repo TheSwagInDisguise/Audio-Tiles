@@ -325,11 +325,14 @@ class MdrProtocolTest {
     @Test
     fun testThemeSkinDefinitions() {
         val skins = com.sony.xm6controller.domain.ThemeSkin.entries
-        assertEquals(4, skins.size)
+        assertEquals(7, skins.size)
         assertTrue(skins.any { it.name == "BLACK_COPPER" })
         assertTrue(skins.any { it.name == "PLATINUM_SILVER" })
         assertTrue(skins.any { it.name == "SMOKY_PINK" })
         assertTrue(skins.any { it.name == "MIDNIGHT_NAVY" })
+        assertTrue(skins.any { it.name == "EMERALD_NEON" })
+        assertTrue(skins.any { it.name == "SUNSET_AMBER" })
+        assertTrue(skins.any { it.name == "OLED_STEALTH" })
     }
 
     @Test

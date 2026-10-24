@@ -35,17 +35,17 @@ enum class ThemeSkin(
         subtitle = "Signature Sony 1000X flagship look",
         primaryGold = Color(0xFFC6A87C),
         accentCopper = Color(0xFFD79E66),
-        surfaceDark = Color(0xFF141721),
-        backgroundObsidian = Color(0xFF090B10),
-        cardBorder = Color(0xFF222938)
+        surfaceDark = Color(0xFF141722),
+        backgroundObsidian = Color(0xFF0B0D13),
+        cardBorder = Color(0xFF262E40)
     ),
     PLATINUM_SILVER(
         displayName = "Platinum Silver & Ice",
         subtitle = "Frosted matte aluminum & cool accents",
         primaryGold = Color(0xFFE2E8F0),
         accentCopper = Color(0xFF38BDF8),
-        surfaceDark = Color(0xFF131A26),
-        backgroundObsidian = Color(0xFF0A0F19),
+        surfaceDark = Color(0xFF131B2A),
+        backgroundObsidian = Color(0xFF0A0E17),
         cardBorder = Color(0xFF253347)
     ),
     SMOKY_PINK(
@@ -53,18 +53,45 @@ enum class ThemeSkin(
         subtitle = "Muted blush inspired by LinkBuds S & WF-XM5",
         primaryGold = Color(0xFFF9A8D4),
         accentCopper = Color(0xFFFB7185),
-        surfaceDark = Color(0xFF1C141E),
-        backgroundObsidian = Color(0xFF0F0A11),
-        cardBorder = Color(0xFF332038)
+        surfaceDark = Color(0xFF1D1322),
+        backgroundObsidian = Color(0xFF110A14),
+        cardBorder = Color(0xFF382340)
     ),
     MIDNIGHT_NAVY(
         displayName = "Midnight Navy & Brass",
         subtitle = "Deep oceanic cobalt with brass highlights",
         primaryGold = Color(0xFFFCD34D),
         accentCopper = Color(0xFF60A5FA),
-        surfaceDark = Color(0xFF0F172A),
-        backgroundObsidian = Color(0xFF070B14),
-        cardBorder = Color(0xFF1E293B)
+        surfaceDark = Color(0xFF0F172E),
+        backgroundObsidian = Color(0xFF070B18),
+        cardBorder = Color(0xFF1E2D4A)
+    ),
+    EMERALD_NEON(
+        displayName = "Cyberpunk Emerald & Mint",
+        subtitle = "Electric neon green on deep dark forest",
+        primaryGold = Color(0xFF34D399),
+        accentCopper = Color(0xFF10B981),
+        surfaceDark = Color(0xFF0D1C17),
+        backgroundObsidian = Color(0xFF050E0B),
+        cardBorder = Color(0xFF1A382E)
+    ),
+    SUNSET_AMBER(
+        displayName = "Warm Espresso & Amber",
+        subtitle = "Rich roasted tones with golden amber glow",
+        primaryGold = Color(0xFFFBBF24),
+        accentCopper = Color(0xFFF59E0B),
+        surfaceDark = Color(0xFF1F140F),
+        backgroundObsidian = Color(0xFF120A07),
+        cardBorder = Color(0xFF3A241A)
+    ),
+    OLED_STEALTH(
+        displayName = "Pure OLED Stealth",
+        subtitle = "True pitch black for maximum battery savings",
+        primaryGold = Color(0xFFF3F4F6),
+        accentCopper = Color(0xFF9CA3AF),
+        surfaceDark = Color(0xFF111114),
+        backgroundObsidian = Color(0xFF000000),
+        cardBorder = Color(0xFF222228)
     )
 }
 

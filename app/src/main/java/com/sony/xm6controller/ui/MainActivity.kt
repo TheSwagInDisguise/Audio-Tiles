@@ -15,6 +15,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -29,6 +32,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,10 +55,13 @@ import android.content.ClipboardManager
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.CompareArrows
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Hearing
 import androidx.compose.material.icons.filled.Layers
@@ -157,12 +164,21 @@ import com.sony.xm6controller.domain.UserEqPreset
 import com.sony.xm6controller.service.XM6ForegroundService
 import com.sony.xm6controller.ui.theme.AmbientBlue
 import com.sony.xm6controller.ui.theme.AncGreen
-import com.sony.xm6controller.ui.theme.CardBorder
 import com.sony.xm6controller.ui.theme.OffGray
-import com.sony.xm6controller.ui.theme.SonyCopper
-import com.sony.xm6controller.ui.theme.SonyGold
 import com.sony.xm6controller.ui.theme.XM6ControllerTheme
 import kotlinx.coroutines.launch
+
+private val CardBorder: Color
+    @Composable
+    get() = MaterialTheme.colorScheme.outline
+
+private val SonyCopper: Color
+    @Composable
+    get() = MaterialTheme.colorScheme.primary
+
+private val SonyGold: Color
+    @Composable
+    get() = MaterialTheme.colorScheme.secondary
 
 class MainActivity : ComponentActivity() {
 
@@ -225,7 +241,12 @@ fun MainScreen(
     val iso226Enabled by repository.dynamicBassManager.isEnabled.collectAsState()
     val iso226Offset by repository.dynamicBassManager.currentCompensationOffset.collectAsState()
 
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var showEqSection by remember { mutableStateOf(false) }
+    var showFeaturesSection by remember { mutableStateOf(false) }
+    var showSmartAudioSection by remember { mutableStateOf(false) }
+    var showDiagnosticsSection by remember { mutableStateOf(false) }
+    var settingsDialogVisible by remember { mutableStateOf(false) }
+
     var foregroundServiceEnabled by remember { mutableStateOf(false) }
     var connectionErrorDialog by remember { mutableStateOf<String?>(null) }
     var pastePeqDialogVisible by remember { mutableStateOf(false) }
@@ -315,74 +336,48 @@ fun MainScreen(
 
     Scaffold(
         topBar = {
-            Column {
-                TopAppBar(
-                    title = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Image(
-                                painter = painterResource(id = R.drawable.ic_app_logo),
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(RoundedCornerShape(8.dp))
+            TopAppBar(
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_app_logo),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            @SuppressLint("MissingPermission")
+                            val devTitle = targetDevice?.name ?: "Sony Audio Tiles"
+                            Text(
+                                text = devTitle,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 17.sp,
+                                maxLines = 1,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column {
-                                @SuppressLint("MissingPermission")
-                                val devTitle = targetDevice?.name ?: "Sony Audio Tiles"
-                                Text(
-                                    text = devTitle,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 17.sp,
-                                    maxLines = 1
-                                )
-                                Text(
-                                    text = "Universal Sound Connect & PEQ Hub",
-                                    fontSize = 11.sp,
-                                    color = SonyCopper
-                                )
-                            }
+                            Text(
+                                text = "Sony Quick Settings & Sound Hub",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
                         }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    )
-                )
-
-                // 4 Navigation Tabs
-                TabRow(
-                    selectedTabIndex = selectedTab,
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = SonyCopper,
-                    indicator = { tabPositions ->
-                        TabRowDefaults.SecondaryIndicator(
-                            Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                            color = SonyCopper
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { settingsDialogVisible = true }) {
+                        Icon(
+                            Icons.Default.Settings,
+                            contentDescription = "Settings",
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
-                ) {
-                    Tab(
-                        selected = selectedTab == 0,
-                        onClick = { selectedTab = 0 },
-                        text = { Text("Controls & ANC", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) }
-                    )
-                    Tab(
-                        selected = selectedTab == 1,
-                        onClick = { selectedTab = 1 },
-                        text = { Text("10-Band EQ & PEQ", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) }
-                    )
-                    Tab(
-                        selected = selectedTab == 2,
-                        onClick = { selectedTab = 2 },
-                        text = { Text("Sound Features", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) }
-                    )
-                    Tab(
-                        selected = selectedTab == 3,
-                        onClick = { selectedTab = 3 },
-                        text = { Text("System", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) }
-                    )
-                }
-            }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            )
         }
     ) { paddingValues ->
         LazyColumn(
@@ -390,9 +385,9 @@ fun MainScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            item { Spacer(modifier = Modifier.height(4.dp)) }
+            item { Spacer(modifier = Modifier.height(2.dp)) }
 
             // Permission Card (if missing)
             if (!hasPermissions) {
@@ -413,15 +408,7 @@ fun MainScreen(
                 }
             }
 
-            // Hardware Theme Finish Selector
-            item {
-                ThemeSkinSelectorCard(
-                    currentSkin = currentSkin,
-                    onSelectSkin = onSkinChanged
-                )
-            }
-
-            // Always-visible Header Card: Device Status Dashboard with Animated Waveform
+            // Always-visible Header Card: Device Status Dashboard with Animated Waveform & Battery Rings
             item {
                 DeviceStatusCard(
                     connectionState = connectionState,
@@ -470,140 +457,131 @@ fun MainScreen(
                 }
             }
 
-            // TAB 0: Controls & ANC
-            if (selectedTab == 0) {
-                item {
-                    NoiseControlCard(
-                        currentMode = noiseControlState.mode,
-                        isConnected = connectionState.isConnected,
-                        onSelectMode = { mode ->
-                            scope.launch {
-                                val res = repository.setMode(mode)
-                                if (res.isFailure) {
-                                    Toast.makeText(context, "Error: ${res.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        },
-                        onCycleMode = {
-                            scope.launch {
-                                val res = repository.cycleMode()
-                                if (res.isFailure) {
-                                    Toast.makeText(context, "Error: ${res.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
-                                }
+            // Primary Noise Control & Clear Bass Card (Core Daily Controls)
+            item {
+                NoiseControlCard(
+                    currentMode = noiseControlState.mode,
+                    ambientLevel = noiseControlState.ambientLevel,
+                    focusOnVoice = noiseControlState.focusOnVoice,
+                    clearBass = equalizerState.clearBass,
+                    isConnected = connectionState.isConnected,
+                    onSelectMode = { mode ->
+                        scope.launch {
+                            val res = repository.setMode(mode)
+                            if (res.isFailure) {
+                                Toast.makeText(context, "Error: ${res.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
                             }
                         }
-                    )
-                }
+                    },
+                    onCycleMode = {
+                        scope.launch {
+                            val res = repository.cycleMode()
+                            if (res.isFailure) {
+                                Toast.makeText(context, "Error: ${res.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    },
+                    onLevelChange = { level -> scope.launch { repository.setAmbientLevel(level) } },
+                    onVoiceFocusToggle = { enabled -> scope.launch { repository.setFocusOnVoice(enabled) } },
+                    onUpdateClearBass = { cb ->
+                        scope.launch {
+                            repository.setEqualizerBands(
+                                preset = EqPreset.CUSTOM_1,
+                                clearBass = cb,
+                                bands = equalizerState.bands
+                            )
+                        }
+                    }
+                )
+            }
 
-                item {
-                    AmbientSoundControlsCard(
-                        noiseControlState = noiseControlState,
-                        isConnected = connectionState.isConnected,
-                        onLevelChange = { level -> scope.launch { repository.setAmbientLevel(level) } },
-                        onVoiceFocusToggle = { enabled -> scope.launch { repository.setFocusOnVoice(enabled) } }
-                    )
-                }
+            // 🔽 POWER USER ACCORDION 1: 10-Band Graphic Equalizer & AutoEq Studio
+            item {
+                ExpandableCard(
+                    title = "10-Band EQ & AutoEq Studio",
+                    subtitle = "Touch-draggable spline, 26 AutoEq profiles & A/B bypass",
+                    icon = Icons.Default.Tune,
+                    isExpanded = showEqSection,
+                    onToggle = { showEqSection = !showEqSection }
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        TenBandEqualizerCard(
+                            tenBandState = tenBandEqState,
+                            equalizerState = equalizerState,
+                            isConnected = connectionState.isConnected,
+                            isEqBypassed = isEqBypassed,
+                            userPresets = userPresets,
+                            onToggleBypass = {
+                                repository.toggleEqBypass()
+                                Toast.makeText(
+                                    context,
+                                    if (!isEqBypassed) "A/B Audition: EQ Bypassed (Flat 0dB sent)" else "A/B Audition: EQ Curve Restored",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            },
+                            onSaveCurrentPreset = { savePresetDialogVisible = true },
+                            onDeleteUserPreset = { presetId ->
+                                repository.deleteUserPreset(presetId)
+                                Toast.makeText(context, "Preset removed", Toast.LENGTH_SHORT).show()
+                            },
+                            onSelectUserPreset = { preset ->
+                                scope.launch {
+                                    repository.applyTenBandEq(preset.toTenBandEqState().copy(profileName = preset.name))
+                                    Toast.makeText(context, "Applied preset: ${preset.name}", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            onOpenAutoEqCatalog = { autoEqCatalogVisible = true },
+                            onUpdateBand = { index, gainDb ->
+                                val next = tenBandEqState.withBand(index, gainDb)
+                                scope.launch { repository.applyTenBandEq(next) }
+                            },
+                            onUpdateClearBass = { cb ->
+                                val next = tenBandEqState.withClearBass(cb)
+                                scope.launch { repository.applyTenBandEq(next) }
+                            },
+                            onResetFlat = {
+                                val flat = TenBandEqState(profileName = "Flat (0 dB)")
+                                scope.launch { repository.applyTenBandEq(flat) }
+                            },
+                            onImportFile = { filePickerLauncher.launch("*/*") },
+                            onPastePeq = { pastePeqDialogVisible = true },
+                            onSelectTargetProfile = { profile ->
+                                scope.launch {
+                                    repository.importAndApplyPeqProfile(profile)
+                                    Toast.makeText(context, "Applied Target: ${profile.name}", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        )
 
-                item {
-                    WindNoiseReductionCard(
-                        windNoiseReduction = noiseControlState.windNoiseReduction,
-                        isConnected = connectionState.isConnected,
-                        onToggle = { enabled -> scope.launch { repository.setWindNoiseReduction(enabled) } }
-                    )
+                        HardwareSonyEqCard(
+                            equalizerState = equalizerState,
+                            isConnected = connectionState.isConnected,
+                            onSelectPreset = { preset ->
+                                scope.launch { repository.setEqualizerPreset(preset) }
+                            },
+                            onUpdateClearBass = { cb ->
+                                scope.launch {
+                                    repository.setEqualizerBands(
+                                        preset = EqPreset.CUSTOM_1,
+                                        clearBass = cb,
+                                        bands = equalizerState.bands
+                                    )
+                                }
+                            }
+                        )
+                    }
                 }
             }
 
-            // TAB 1: 10-Band Graphic Equalizer & PEQDB Import
-            if (selectedTab == 1) {
-                item {
-                    TenBandEqualizerCard(
-                        tenBandState = tenBandEqState,
-                        equalizerState = equalizerState,
-                        isConnected = connectionState.isConnected,
-                        isEqBypassed = isEqBypassed,
-                        userPresets = userPresets,
-                        onToggleBypass = {
-                            repository.toggleEqBypass()
-                            Toast.makeText(
-                                context,
-                                if (!isEqBypassed) "A/B Audition: EQ Bypassed (Flat 0dB sent)" else "A/B Audition: EQ Curve Restored",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        },
-                        onSaveCurrentPreset = {
-                            savePresetDialogVisible = true
-                        },
-                        onDeleteUserPreset = { presetId ->
-                            repository.deleteUserPreset(presetId)
-                            Toast.makeText(context, "Preset removed", Toast.LENGTH_SHORT).show()
-                        },
-                        onSelectUserPreset = { preset ->
-                            scope.launch {
-                                repository.applyTenBandEq(preset.toTenBandEqState().copy(profileName = preset.name))
-                                Toast.makeText(context, "Applied preset: ${preset.name}", Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                        onOpenAutoEqCatalog = {
-                            autoEqCatalogVisible = true
-                        },
-                        onUpdateBand = { index, gainDb ->
-                            val next = tenBandEqState.withBand(index, gainDb)
-                            scope.launch { repository.applyTenBandEq(next) }
-                        },
-                        onUpdateClearBass = { cb ->
-                            val next = tenBandEqState.withClearBass(cb)
-                            scope.launch { repository.applyTenBandEq(next) }
-                        },
-                        onResetFlat = {
-                            val flat = TenBandEqState(profileName = "Flat (0 dB)")
-                            scope.launch { repository.applyTenBandEq(flat) }
-                        },
-                        onImportFile = {
-                            filePickerLauncher.launch("*/*")
-                        },
-                        onPastePeq = {
-                            pastePeqDialogVisible = true
-                        },
-                        onSelectTargetProfile = { profile ->
-                            scope.launch {
-                                repository.importAndApplyPeqProfile(profile)
-                                Toast.makeText(context, "Applied Target: ${profile.name}", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    )
-                }
-
-                item {
-                    HardwareSonyEqCard(
-                        equalizerState = equalizerState,
-                        isConnected = connectionState.isConnected,
-                        onSelectPreset = { preset ->
-                            scope.launch { repository.setEqualizerPreset(preset) }
-                        },
-                        onUpdateClearBass = { cb ->
-                            scope.launch {
-                                repository.setEqualizerBands(
-                                    preset = EqPreset.CUSTOM_1,
-                                    clearBass = cb,
-                                    bands = equalizerState.bands
-                                )
-                            }
-                        }
-                    )
-                }
-
-                item {
-                    DynamicBassCard(
-                        isEnabled = iso226Enabled,
-                        activeCompensationOffset = iso226Offset,
-                        onToggle = { enabled -> repository.dynamicBassManager.setEnabled(enabled) }
-                    )
-                }
-            }
-
-            // TAB 2: Sound Features (Speak-to-Chat, DSEE, Wearing Pause, Acoustic Seal)
-            if (selectedTab == 2) {
-                item {
+            // 🔽 POWER USER ACCORDION 2: Sound Connect Hardware Features
+            item {
+                ExpandableCard(
+                    title = "Headphone Hardware Features",
+                    subtitle = "Speak-to-Chat, DSEE Extreme, Wearing Detection & LDAC",
+                    icon = Icons.Default.Layers,
+                    isExpanded = showFeaturesSection,
+                    onToggle = { showFeaturesSection = !showFeaturesSection }
+                ) {
                     SoundFeaturesCard(
                         soundFeatures = soundFeaturesState,
                         deviceCapabilities = deviceCapabilities,
@@ -624,40 +602,40 @@ fun MainScreen(
                         onToggleSoundQuality = { quality -> scope.launch { repository.setSoundQualityPriority(quality) } }
                     )
                 }
+            }
 
-                item {
-                    AcousticSealCard(
-                        onOpenTest = { acousticSealDialogVisible = true }
-                    )
+            // 🔽 POWER USER ACCORDION 3: Smart Audio & Automations
+            item {
+                ExpandableCard(
+                    title = "Smart Audio & Dynamic Bass",
+                    subtitle = "ISO 226 equal-loudness dynamic bass & acoustic seal test",
+                    icon = Icons.Default.GraphicEq,
+                    isExpanded = showSmartAudioSection,
+                    onToggle = { showSmartAudioSection = !showSmartAudioSection }
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        DynamicBassCard(
+                            isEnabled = iso226Enabled,
+                            activeCompensationOffset = iso226Offset,
+                            onToggle = { enabled -> repository.dynamicBassManager.setEnabled(enabled) }
+                        )
+
+                        AcousticSealCard(
+                            onOpenTest = { acousticSealDialogVisible = true }
+                        )
+                    }
                 }
             }
 
-            // TAB 3: System, ColorOS & Diagnostics
-            if (selectedTab == 3) {
-                item {
-                    TileCustomizationCard(
-                        activeScheme = tileCycleScheme,
-                        onSelectScheme = { scheme -> repository.setTileCycleScheme(scheme) }
-                    )
-                }
-
-                item {
-                    ColorOSOptimizationCard(
-                        foregroundServiceEnabled = foregroundServiceEnabled,
-                        onToggleForegroundService = { enabled ->
-                            foregroundServiceEnabled = enabled
-                            if (enabled) {
-                                XM6ForegroundService.start(context)
-                                Toast.makeText(context, "Persistent background service started", Toast.LENGTH_SHORT).show()
-                            } else {
-                                XM6ForegroundService.stop(context)
-                                Toast.makeText(context, "Persistent background service stopped", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    )
-                }
-
-                item {
+            // 🔽 POWER USER ACCORDION 4: MDR Protocol & Live Diagnostics
+            item {
+                ExpandableCard(
+                    title = "MDR Protocol & Live Diagnostics",
+                    subtitle = "Real-time RFCOMM packet monitor & diagnostic report export",
+                    icon = Icons.Default.BugReport,
+                    isExpanded = showDiagnosticsSection,
+                    onToggle = { showDiagnosticsSection = !showDiagnosticsSection }
+                ) {
                     DiagnosticsCard(
                         diagnosticEntries = diagnosticEntries,
                         onCopyReport = {
@@ -674,7 +652,29 @@ fun MainScreen(
                 }
             }
 
-            item { Spacer(modifier = Modifier.height(16.dp)) }
+            item { Spacer(modifier = Modifier.height(24.dp)) }
+        }
+
+        // Settings Modal Dialog (Theme, Tile Scheme, ColorOS)
+        if (settingsDialogVisible) {
+            SettingsDialog(
+                currentSkin = currentSkin,
+                onSelectSkin = onSkinChanged,
+                tileCycleScheme = tileCycleScheme,
+                onSelectScheme = { scheme -> repository.setTileCycleScheme(scheme) },
+                foregroundServiceEnabled = foregroundServiceEnabled,
+                onToggleForegroundService = { enabled ->
+                    foregroundServiceEnabled = enabled
+                    if (enabled) {
+                        XM6ForegroundService.start(context)
+                        Toast.makeText(context, "Persistent background service started", Toast.LENGTH_SHORT).show()
+                    } else {
+                        XM6ForegroundService.stop(context)
+                        Toast.makeText(context, "Persistent background service stopped", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                onDismissRequest = { settingsDialogVisible = false }
+            )
         }
 
         // AutoEq Catalog Search Modal Dialog
@@ -1929,14 +1929,20 @@ fun SoundFeaturesCard(
 @Composable
 fun NoiseControlCard(
     currentMode: NoiseControlMode,
+    ambientLevel: Int,
+    focusOnVoice: Boolean,
+    clearBass: Int,
     isConnected: Boolean,
     onSelectMode: (NoiseControlMode) -> Unit,
-    onCycleMode: () -> Unit
+    onCycleMode: () -> Unit,
+    onLevelChange: (Int) -> Unit,
+    onVoiceFocusToggle: (Boolean) -> Unit,
+    onUpdateClearBass: (Int) -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, CardBorder, RoundedCornerShape(16.dp)),
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp)),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -1947,18 +1953,18 @@ fun NoiseControlCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Noise Control Modes",
+                    text = "Noise Control & Sound",
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 16.sp
                 )
                 Text(
-                    text = "Sony MDR SPP",
+                    text = "MDR Wireless",
                     fontSize = 11.sp,
-                    color = SonyCopper
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Big Active Mode Indicator Banner
             Surface(
@@ -1979,7 +1985,7 @@ fun NoiseControlCard(
                 )
             ) {
                 Row(
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier.padding(14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
@@ -1996,14 +2002,14 @@ fun NoiseControlCard(
                             NoiseControlMode.AMBIENT_SOUND -> AmbientBlue
                             NoiseControlMode.OFF -> OffGray
                         },
-                        modifier = Modifier.size(36.dp)
+                        modifier = Modifier.size(32.dp)
                     )
-                    Spacer(modifier = Modifier.width(14.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
                             text = currentMode.label,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
+                            fontSize = 17.sp,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
@@ -2015,7 +2021,7 @@ fun NoiseControlCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Mode Selector Buttons (NC On, Ambient, Off)
             Row(
@@ -2048,24 +2054,108 @@ fun NoiseControlCard(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            // If Ambient is active, show the ambient level slider and voice focus
+            if (currentMode == NoiseControlMode.AMBIENT_SOUND) {
+                Spacer(modifier = Modifier.height(14.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
+                        .padding(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Ambient Sound Level:", fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                        Text("Level $ambientLevel / 20", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AmbientBlue)
+                    }
+                    Slider(
+                        value = ambientLevel.toFloat(),
+                        onValueChange = { onLevelChange(it.toInt()) },
+                        valueRange = 1f..20f,
+                        steps = 18,
+                        enabled = isConnected,
+                        colors = SliderDefaults.colors(thumbColor = AmbientBlue, activeTrackColor = AmbientBlue)
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Focus on Voice (speech passthrough)", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))
+                        Switch(
+                            checked = focusOnVoice,
+                            onCheckedChange = onVoiceFocusToggle,
+                            enabled = isConnected,
+                            colors = SwitchDefaults.colors(checkedThumbColor = AmbientBlue, checkedTrackColor = AmbientBlue.copy(alpha = 0.5f))
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Quick Clear Bass Slider (Everyday subwoofer punch)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
+                    .padding(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Clear Bass:", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "${if (clearBass > 0) "+" else ""}$clearBass dB",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    Text("Subwoofer Boost", fontSize = 10.sp, color = Color.Gray)
+                }
+                Slider(
+                    value = clearBass.toFloat(),
+                    onValueChange = { onUpdateClearBass(it.toInt()) },
+                    valueRange = -10f..10f,
+                    steps = 19,
+                    enabled = isConnected,
+                    colors = SliderDefaults.colors(
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                        activeTrackColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Cycle Button
             Button(
                 onClick = onCycleMode,
                 enabled = isConnected,
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
                 Icon(
                     Icons.Default.Refresh,
                     contentDescription = null,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(16.dp),
+                    tint = Color.Black
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Simulate Quick Settings Tile Tap (Cycle Mode)",
-                    fontWeight = FontWeight.SemiBold
+                    text = "Cycle Mode (Simulate Quick Settings Tile Tap)",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    color = Color.Black
                 )
             }
         }
@@ -2825,67 +2915,316 @@ fun CircularBatteryGauge(
 }
 
 // -------------------------------------------------------------------------------------------------
-// THEME FINISH / SKIN SELECTOR COMPOSABLE
+// POWER-USER EXPANDABLE ACCORDION CARD
 // -------------------------------------------------------------------------------------------------
 
 @Composable
-fun ThemeSkinSelectorCard(
-    currentSkin: ThemeSkin,
-    onSelectSkin: (ThemeSkin) -> Unit
+fun ExpandableCard(
+    title: String,
+    subtitle: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    isExpanded: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
 ) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .border(1.dp, CardBorder, RoundedCornerShape(16.dp)),
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp)),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(16.dp)
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Palette, contentDescription = null, tint = SonyCopper, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Hardware Theme Finishes", fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                }
-                Text("v2.0.0", fontSize = 10.sp, color = SonyCopper, fontWeight = FontWeight.Bold)
-            }
-            Spacer(modifier = Modifier.height(8.dp))
+        Column {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .clickable(onClick = onToggle)
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                ThemeSkin.entries.forEach { skin ->
-                    val isSel = (skin == currentSkin)
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = if (isSel) skin.accentCopper else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, if (isSel) skin.primaryGold else CardBorder),
-                        modifier = Modifier.clickable { onSelectSkin(skin) }
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                        ) {
-                            Box(modifier = Modifier.size(10.dp).background(skin.primaryGold, CircleShape))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = skin.displayName,
-                                fontSize = 11.sp,
-                                fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSel) Color.Black else MaterialTheme.colorScheme.onSurface
-                            )
-                        }
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = title,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = subtitle,
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                        )
+                    }
+                }
+                Icon(
+                    imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = if (isExpanded) "Collapse" else "Expand",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            AnimatedVisibility(
+                visible = isExpanded,
+                enter = expandVertically(),
+                exit = shrinkVertically()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 16.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                    content()
                 }
             }
         }
     }
+}
+
+// -------------------------------------------------------------------------------------------------
+// SETTINGS MODAL DIALOG (THEME PALETTE, TILE CYCLE SCHEME, COLOROS)
+// -------------------------------------------------------------------------------------------------
+
+@Composable
+fun SettingsDialog(
+    currentSkin: ThemeSkin,
+    onSelectSkin: (ThemeSkin) -> Unit,
+    tileCycleScheme: TileCycleScheme,
+    onSelectScheme: (TileCycleScheme) -> Unit,
+    foregroundServiceEnabled: Boolean,
+    onToggleForegroundService: (Boolean) -> Unit,
+    onDismissRequest: () -> Unit
+) {
+    val context = LocalContext.current
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Settings, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("App & Theming Settings", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                // Section 1: Predefined Color Palette & Themes
+                Text(
+                    text = "Theme & Color Palette",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "Select from curated color schemes matching Sony finishes & OLED displays:",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    ThemeSkin.entries.forEach { skin ->
+                        val isSelected = (skin == currentSkin)
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = skin.surfaceDark,
+                            border = androidx.compose.foundation.BorderStroke(
+                                if (isSelected) 2.dp else 1.dp,
+                                if (isSelected) skin.primaryGold else skin.cardBorder
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onSelectSkin(skin) }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    // Palette Swatch preview: Background outer circle + Accent inner circle
+                                    Box(
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .background(skin.backgroundObsidian, CircleShape)
+                                            .border(1.dp, skin.cardBorder, CircleShape),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(12.dp)
+                                                .background(skin.primaryGold, CircleShape)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column {
+                                        Text(
+                                            text = skin.displayName,
+                                            fontSize = 12.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                            color = Color.White
+                                        )
+                                        Text(
+                                            text = skin.subtitle,
+                                            fontSize = 10.sp,
+                                            color = Color.Gray
+                                        )
+                                    }
+                                }
+                                if (isSelected) {
+                                    Icon(
+                                        Icons.Default.CheckCircle,
+                                        contentDescription = "Selected",
+                                        tint = skin.primaryGold,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)))
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Section 2: Quick Settings Tile Scheme
+                Text(
+                    text = "Quick Settings Tile Cycling",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "Choose which modes the Quick Settings tile switches between:",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                TileCycleScheme.entries.forEach { scheme ->
+                    val isSel = (scheme == tileCycleScheme)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelectScheme(scheme) }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = isSel,
+                            onClick = { onSelectScheme(scheme) },
+                            colors = androidx.compose.material3.RadioButtonDefaults.colors(
+                                selectedColor = MaterialTheme.colorScheme.primary
+                            )
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Column {
+                            Text(text = scheme.displayName, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            Text(text = scheme.description, fontSize = 10.sp, color = Color.Gray)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)))
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Section 3: Background Service & ColorOS
+                Text(
+                    text = "ColorOS & Background Execution",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "Prevent background suspension by aggressive OEM task managers:",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Persistent Background Service", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    Switch(
+                        checked = foregroundServiceEnabled,
+                        onCheckedChange = onToggleForegroundService,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.primary,
+                            checkedTrackColor = MaterialTheme.colorScheme.secondary
+                        )
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = {
+                        try {
+                            val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                            context.startActivity(intent)
+                        } catch (_: Exception) {}
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Battery Optimization Settings", fontSize = 11.sp)
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)))
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Section 4: About
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Sony Audio Tiles", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text("v2.0.0 (Build 20000)", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onDismissRequest,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Text("Done", color = Color.Black, fontWeight = FontWeight.Bold)
+            }
+        }
+    )
 }
 
 // -------------------------------------------------------------------------------------------------
