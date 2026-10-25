@@ -4,11 +4,11 @@ Universal Noise Control, Quick Settings Tiles & Parametric EQ Studio for **Sony 
 
 A lightweight, zero-telemetry Android companion app targeting **Android 14+ (API 34+)** with specialized optimizations for **ColorOS / Oppo Find X9 Ultra**. Communicates directly with your headset over Bluetooth Classic RFCOMM (SPP) using native Sony MDR v1 & v2 protocol frames — delivering sub-50ms mode switching without the bloat, battery drain, accounts, or background data collection of the proprietary manufacturer app.
 
-[**Download Signed APK (v2.0.1)**](https://github.com/TheSwagInDisguise/Sony-Audio-Tiles/releases/download/v2.0.1/Sony-Audio-Tiles-v2.0.1.apk) • [**Interactive Web Showcase**](https://theswagindisguise.github.io/Sony-Audio-Tiles/) • [**Release Notes**](https://github.com/TheSwagInDisguise/Sony-Audio-Tiles/releases/tag/v2.0.1)
+[**Download Signed APK (v2.0.2)**](https://github.com/TheSwagInDisguise/Sony-Audio-Tiles/releases/download/v2.0.2/Sony-Audio-Tiles-v2.0.2.apk) • [**Interactive Web Showcase**](https://theswagindisguise.github.io/Sony-Audio-Tiles/) • [**Release Notes**](https://github.com/TheSwagInDisguise/Sony-Audio-Tiles/releases/tag/v2.0.2)
 
 ```text
-Official v2.0.1 Release Verification:
-Asset:   Sony-Audio-Tiles-v2.0.1.apk (11.90 MB)
+Official v2.0.2 Release Verification:
+Asset:   Sony-Audio-Tiles-v2.0.2.apk (11.90 MB)
 SHA-256: a50315d83c3dc80000c154c2785653393e9f8ff9de0c09abfa9416298d0221cf
 ```
 
@@ -118,7 +118,7 @@ Common MDR Command Payloads:
 
 ## Quick Installation & Setup
 
-1. **Download APK**: Download `Sony-Audio-Tiles-v2.0.1.apk` from [Releases](https://github.com/TheSwagInDisguise/Sony-Audio-Tiles/releases/tag/v2.0.1).
+1. **Download APK**: Download `Sony-Audio-Tiles-v2.0.2.apk` from [Releases](https://github.com/TheSwagInDisguise/Sony-Audio-Tiles/releases/tag/v2.0.2).
 2. **Pair Headset**: Pair your Sony headphones or earbuds in Android's Bluetooth settings.
 3. **Add Tile**: Swipe down your notification shade twice, tap the Edit (Pencil) icon, and drag **Sony Audio Control** into your active tiles grid.
 4. **ColorOS / Oppo Users**: Open the app once, tap the ⚙️ Settings cog in the top bar, and verify **"Ignore Battery Optimizations"** to ensure background persistence.
