@@ -63,7 +63,7 @@ class XM6ForegroundService : Service() {
 
     private fun startForegroundWithNotification() {
         val notification = buildNotification(
-            title = "Sony WH-1000XM6 Controller",
+            title = "Sony Audio Tiles",
             content = "Connecting to headset..."
         )
 
@@ -103,13 +103,13 @@ class XM6ForegroundService : Service() {
     private fun updateNotification(connection: ConnectionState, modeLabel: String) {
         val content = when (connection) {
             is ConnectionState.Connected -> "Active Mode: $modeLabel"
-            is ConnectionState.Connecting -> "Connecting to WH-1000XM6..."
+            is ConnectionState.Connecting -> "Connecting to Sony Headset..."
             is ConnectionState.Error -> "Error: ${connection.message}"
             is ConnectionState.Disconnected -> "Disconnected"
         }
 
         val notification = buildNotification(
-            title = "Sony WH-1000XM6 Controller",
+            title = "Sony Audio Tiles",
             content = content
         )
 
@@ -157,7 +157,7 @@ class XM6ForegroundService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "XM6 Noise Control Service",
+                "Sony Audio Tiles Service",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
                 description = "Keeps Bluetooth RFCOMM connection active for instant Quick Settings response."
