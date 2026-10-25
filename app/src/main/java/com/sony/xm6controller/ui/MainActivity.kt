@@ -577,7 +577,7 @@ fun MainScreen(
             item {
                 ExpandableCard(
                     title = "Headphone Hardware Features",
-                    subtitle = "Speak-to-Chat, DSEE Extreme, Wearing Detection & LDAC",
+                    subtitle = "Speak-to-Chat, DSEE, wear detection & LDAC",
                     icon = Icons.Default.Layers,
                     isExpanded = showFeaturesSection,
                     onToggle = { showFeaturesSection = !showFeaturesSection }
@@ -608,7 +608,7 @@ fun MainScreen(
             item {
                 ExpandableCard(
                     title = "Smart Audio & Dynamic Bass",
-                    subtitle = "ISO 226 equal-loudness dynamic bass & acoustic seal test",
+                    subtitle = "ISO 226 equal-loudness bass & seal test",
                     icon = Icons.Default.GraphicEq,
                     isExpanded = showSmartAudioSection,
                     onToggle = { showSmartAudioSection = !showSmartAudioSection }
@@ -631,7 +631,7 @@ fun MainScreen(
             item {
                 ExpandableCard(
                     title = "MDR Protocol & Live Diagnostics",
-                    subtitle = "Real-time RFCOMM packet monitor & diagnostic report export",
+                    subtitle = "Real-time RFCOMM packet monitor & report",
                     icon = Icons.Default.BugReport,
                     isExpanded = showDiagnosticsSection,
                     onToggle = { showDiagnosticsSection = !showDiagnosticsSection }
@@ -1432,11 +1432,24 @@ fun HardwareSonyEqCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Text("Sony On-Headset DSP Hardware Controls", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                    Text("Direct hardware register write (Opcode 0x58)", fontSize = 11.sp, color = SonyCopper)
+                Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                    Text("On-Headset DSP Controls", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                    Text("Hardware register write (Opcode 0x58)", fontSize = 11.sp, color = SonyCopper)
                 }
-                Text("Clear Bass: ${if (equalizerState.clearBass > 0) "+" else ""}${equalizerState.clearBass}", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = SonyGold)
+                Surface(
+                    color = SonyCopper.copy(alpha = 0.15f),
+                    shape = RoundedCornerShape(8.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, SonyCopper.copy(alpha = 0.35f))
+                ) {
+                    Text(
+                        text = "Clear Bass: ${if (equalizerState.clearBass > 0) "+" else ""}${equalizerState.clearBass}",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        color = SonyGold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        maxLines = 1
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -1779,16 +1792,25 @@ fun SoundFeaturesCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Sound Connect Hardware Features",
+                    text = "Hardware Features",
                     fontWeight = FontWeight.SemiBold,
-                    fontSize = 16.sp
+                    fontSize = 15.sp,
+                    modifier = Modifier.weight(1f).padding(end = 8.dp)
                 )
-                Text(
-                    text = deviceCapabilities.modelName,
-                    fontSize = 11.sp,
-                    color = SonyCopper,
-                    fontWeight = FontWeight.Bold
-                )
+                Surface(
+                    color = SonyCopper.copy(alpha = 0.15f),
+                    shape = RoundedCornerShape(8.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, SonyCopper.copy(alpha = 0.35f))
+                ) {
+                    Text(
+                        text = deviceCapabilities.modelName,
+                        fontSize = 11.sp,
+                        color = SonyCopper,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                        maxLines = 1
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(14.dp))
 
@@ -1799,7 +1821,7 @@ fun SoundFeaturesCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
                         Text("Speak-to-Chat", fontWeight = FontWeight.Medium, fontSize = 14.sp)
                         Text("Auto ambient sound passthrough when user speaks", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                     }
@@ -1819,7 +1841,7 @@ fun SoundFeaturesCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
                         Text("DSEE Extreme (AI Upscaling)", fontWeight = FontWeight.Medium, fontSize = 14.sp)
                         Text("Restores high frequencies in compressed Bluetooth audio", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                     }
@@ -1839,7 +1861,7 @@ fun SoundFeaturesCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
                         Text("Pause on Removal", fontWeight = FontWeight.Medium, fontSize = 14.sp)
                         Text("Pauses playback via optical/capacitive wearing sensor", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                     }
@@ -1859,7 +1881,7 @@ fun SoundFeaturesCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
                         Text("Touch Sensor Control Panel", fontWeight = FontWeight.Medium, fontSize = 14.sp)
                         Text("Enables tap/swipe volume and media gestures on earcup", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                     }
@@ -1878,7 +1900,7 @@ fun SoundFeaturesCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
+                Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
                     Text("Priority on Sound Quality (LDAC)", fontWeight = FontWeight.Medium, fontSize = 14.sp)
                     Text("High-resolution 990kbps LDAC audio transmission", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 }
@@ -1892,9 +1914,9 @@ fun SoundFeaturesCard(
             Spacer(modifier = Modifier.height(16.dp))
 
             // 6. Auto Power-Off Timer
-            Text("Auto Power-Off Timer (When not worn)", fontWeight = FontWeight.Medium, fontSize = 14.sp)
+            Text("Auto Power-Off Timer (When Not Worn)", fontWeight = FontWeight.Medium, fontSize = 14.sp)
             Spacer(modifier = Modifier.height(8.dp))
-            val autoOffLabels = listOf("Do not turn off", "5 min", "30 min", "60 min", "180 min")
+            val autoOffLabels = listOf("Never", "5 min", "30 min", "60 min", "180 min")
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -1911,11 +1933,14 @@ fun SoundFeaturesCard(
                     ) {
                         Text(
                             text = label,
-                            fontSize = 10.sp,
+                            fontSize = 11.sp,
                             fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
                             color = if (isSel) Color.Black else MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.padding(vertical = 8.dp),
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            maxLines = 1
                         )
                     }
                 }
@@ -2961,7 +2986,7 @@ fun ExpandableCard(
                         )
                     }
                     Spacer(modifier = Modifier.width(12.dp))
-                    Column {
+                    Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
                         Text(
                             text = title,
                             fontWeight = FontWeight.Bold,
@@ -3252,7 +3277,10 @@ fun DynamicBassCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f).padding(end = 12.dp)
+                ) {
                     Icon(Icons.Default.GraphicEq, contentDescription = null, tint = SonyCopper)
                     Spacer(modifier = Modifier.width(8.dp))
                     Column {
@@ -3308,7 +3336,7 @@ fun AcousticSealCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
                 Text(
                     text = "Acoustic Seal & Fit Verification",
                     fontWeight = FontWeight.SemiBold,
