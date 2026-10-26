@@ -81,12 +81,16 @@ class MdrProtocolTest {
     fun testSetNoiseControlPayloadsV2() {
         // Noise Cancelling
         val ncPayload = MdrCommandBuilder.buildSetNoiseControlPayload(
-            targetMode = NoiseControlMode.NOISE_CANCELLING
+            targetMode = NoiseControlMode.NOISE_CANCELLING,
+            ambientLevel = 15,
+            focusOnVoice = true
         )
         assertEquals(MdrConstants.OP_ASC_SET, ncPayload[0]) // 0x68
         assertEquals(MdrConstants.SUBTYPE_NC_ASM_V2, ncPayload[1]) // 0x17
         assertEquals(MdrConstants.ASC_SWITCH_ON, ncPayload[3]) // on = 0x01
         assertEquals(MdrConstants.ASM_MODE_NC, ncPayload[4]) // amb = 0x00
+        assertEquals(0.toByte(), ncPayload[6]) // voice must be 0 in NC mode
+        assertEquals(1.toByte(), ncPayload[7]) // level must be 1 (canonical NC mode status)
 
         // Ambient Sound
         val ambientPayload = MdrCommandBuilder.buildSetNoiseControlPayload(
@@ -104,6 +108,8 @@ class MdrProtocolTest {
             targetMode = NoiseControlMode.OFF
         )
         assertEquals(MdrConstants.ASC_SWITCH_OFF, offPayload[3]) // on = 0x00
+        assertEquals(0.toByte(), offPayload[6]) // voice must be 0 in Off mode
+        assertEquals(1.toByte(), offPayload[7]) // level must be 1 in Off mode
     }
 
     @Test

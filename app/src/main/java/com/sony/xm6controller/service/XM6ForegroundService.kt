@@ -100,6 +100,8 @@ class XM6ForegroundService : Service() {
         }
     }
 
+    private var lastNotifiedContent: String? = null
+
     private fun updateNotification(connection: ConnectionState, modeLabel: String) {
         val content = when (connection) {
             is ConnectionState.Connected -> "Active Mode: $modeLabel"
@@ -107,6 +109,9 @@ class XM6ForegroundService : Service() {
             is ConnectionState.Error -> "Error: ${connection.message}"
             is ConnectionState.Disconnected -> "Disconnected"
         }
+
+        if (content == lastNotifiedContent) return
+        lastNotifiedContent = content
 
         val notification = buildNotification(
             title = "Sony Audio Tiles",
@@ -149,6 +154,7 @@ class XM6ForegroundService : Service() {
             .setContentText(content)
             .setContentIntent(openAppPendingIntent)
             .setOngoing(true)
+            .setOnlyAlertOnce(true)
             .addAction(cycleAction)
             .build()
     }
@@ -162,6 +168,9 @@ class XM6ForegroundService : Service() {
             ).apply {
                 description = "Keeps Bluetooth RFCOMM connection active for instant Quick Settings response."
                 setShowBadge(false)
+                setSound(null, null)
+                enableVibration(false)
+                enableLights(false)
             }
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
             manager?.createNotificationChannel(channel)

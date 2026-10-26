@@ -84,24 +84,30 @@ object MdrCommandBuilder {
 
         // V1 legacy 7-byte frame (XM3, XM4 legacy)
         if (isV1) {
+            val v1Voice = if (targetMode == NoiseControlMode.AMBIENT_SOUND && focusOnVoice) 0x01.toByte() else 0x00.toByte()
+            val v1Level = if (targetMode == NoiseControlMode.AMBIENT_SOUND) clampedLevel else 0x00.toByte()
             return byteArrayOf(
                 MdrConstants.OP_ASC_SET,
                 subtype,
                 0x01.toByte(),
                 onByte,
                 ambByte,
-                if (focusOnVoice) 0x01.toByte() else 0x00.toByte(),
-                clampedLevel
+                v1Voice,
+                v1Level
             )
         }
 
         // V2 standard 8-byte frame (XM5, XM6, LinkBuds, ULT WEAR)
         // Wire layout: [0x68, subtype, 0x01, onByte, ambByte, windByte, focusOnVoice, ambientLevel]
+        // Note: In NOISE_CANCELLING and OFF modes, voice focus must be 0x00 and level byte is 0x01 (mode param),
+        // preventing inadvertent audio ducking or voice attenuation in the headphone DSP.
         val windByte = if (currentState?.windNoiseReduction == true && targetMode == NoiseControlMode.NOISE_CANCELLING) {
             MdrConstants.WIND_NOISE_REDUCTION_ON
         } else {
             MdrConstants.WIND_NOISE_REDUCTION_OFF
         }
+        val v2Voice = if (targetMode == NoiseControlMode.AMBIENT_SOUND && focusOnVoice) 0x01.toByte() else 0x00.toByte()
+        val v2Level = if (targetMode == NoiseControlMode.AMBIENT_SOUND) clampedLevel else 0x01.toByte()
 
         return byteArrayOf(
             MdrConstants.OP_ASC_SET,
@@ -110,8 +116,8 @@ object MdrCommandBuilder {
             onByte,
             ambByte,
             windByte,
-            if (focusOnVoice) 0x01.toByte() else 0x00.toByte(),
-            clampedLevel
+            v2Voice,
+            v2Level
         )
     }
 
