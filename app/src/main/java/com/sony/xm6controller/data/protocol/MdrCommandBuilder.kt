@@ -44,7 +44,9 @@ object MdrCommandBuilder {
 
     /**
      * Constructs a SET command payload to switch noise control mode.
-     * Automatically formats for either MDR v2 (with wind byte) or MDR v1 legacy (without wind byte).
+     * Generates standard canonical frame layouts:
+     * - MDR v2: 8-byte frame [0x68, subtype, 0x01, onByte, ambByte, windByte, focusOnVoice, ambientLevel]
+     * - MDR v1: 7-byte frame [0x68, subtype, 0x01, onByte, ambByte, focusOnVoice, ambientLevel]
      */
     fun buildSetNoiseControlPayload(
         targetMode: NoiseControlMode,
@@ -52,55 +54,16 @@ object MdrCommandBuilder {
         ambientLevel: Int = MdrConstants.AMBIENT_LEVEL_DEFAULT,
         focusOnVoice: Boolean = false
     ): ByteArray {
-        val raw = currentState?.rawPayload
         val subtype = currentState?.subtype ?: MdrConstants.SUBTYPE_NC_ASM_V2
-        val isV1 = (subtype == MdrConstants.SUBTYPE_NC_ASM_V1 || subtype == 0x01.toByte())
-        val hasWind = currentState?.hasWindByte ?: (!isV1)
-        val clampedLevel = ambientLevel.coerceIn(MdrConstants.AMBIENT_LEVEL_MIN, MdrConstants.AMBIENT_LEVEL_MAX).toByte()
-
-        if (raw != null && raw.size >= 7) {
-            val pl = raw.clone()
-            pl[0] = MdrConstants.OP_ASC_SET // 0x68
-            pl[2] = 0x01.toByte()
-
-            when (targetMode) {
-                NoiseControlMode.OFF -> {
-                    pl[3] = MdrConstants.ASC_SWITCH_OFF // on = 0x00
-                    pl[4] = MdrConstants.ASM_MODE_NC     // amb = 0x00
-                }
-                NoiseControlMode.NOISE_CANCELLING -> {
-                    pl[3] = MdrConstants.ASC_SWITCH_ON  // on = 0x01
-                    pl[4] = MdrConstants.ASM_MODE_NC     // amb = 0x00
-                }
-                NoiseControlMode.AMBIENT_SOUND -> {
-                    pl[3] = MdrConstants.ASC_SWITCH_ON  // on = 0x01
-                    pl[4] = MdrConstants.ASM_MODE_AMBIENT// amb = 0x01
-                }
-            }
-
-            val windByte = if (currentState.windNoiseReduction && targetMode == NoiseControlMode.NOISE_CANCELLING) {
-                MdrConstants.WIND_NOISE_REDUCTION_ON
-            } else {
-                MdrConstants.WIND_NOISE_REDUCTION_OFF
-            }
-
-            if (hasWind && pl.size > 5) {
-                pl[5] = windByte
-            }
-
-            val voiceIdx = if (hasWind) 6 else 5
-            val levelIdx = voiceIdx + 1
-
-            if (pl.size > voiceIdx) {
-                pl[voiceIdx] = if (focusOnVoice) MdrConstants.VOICE_FOCUS_ON else MdrConstants.VOICE_FOCUS_OFF
-            }
-            if (pl.size > levelIdx) {
-                pl[levelIdx] = clampedLevel
-            }
-            return pl
+        val isV1 = (subtype == MdrConstants.SUBTYPE_NC_ASM_V1 || subtype == 0x01.toByte() || subtype == 0x02.toByte())
+        val effectiveLevel = if (ambientLevel in MdrConstants.AMBIENT_LEVEL_MIN..MdrConstants.AMBIENT_LEVEL_MAX) {
+            ambientLevel
+        } else {
+            currentState?.ambientLevel?.takeIf { it in MdrConstants.AMBIENT_LEVEL_MIN..MdrConstants.AMBIENT_LEVEL_MAX }
+                ?: MdrConstants.AMBIENT_LEVEL_DEFAULT
         }
+        val clampedLevel = effectiveLevel.toByte()
 
-        // Fresh frame generation
         val onByte: Byte
         val ambByte: Byte
 
@@ -133,6 +96,7 @@ object MdrCommandBuilder {
         }
 
         // V2 standard 8-byte frame (XM5, XM6, LinkBuds, ULT WEAR)
+        // Wire layout: [0x68, subtype, 0x01, onByte, ambByte, windByte, focusOnVoice, ambientLevel]
         val windByte = if (currentState?.windNoiseReduction == true && targetMode == NoiseControlMode.NOISE_CANCELLING) {
             MdrConstants.WIND_NOISE_REDUCTION_ON
         } else {

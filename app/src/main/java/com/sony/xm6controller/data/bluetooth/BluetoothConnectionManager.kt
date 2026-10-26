@@ -1035,7 +1035,7 @@ class BluetoothConnectionManager private constructor(private val context: Contex
 
                 // Check for ASC state packet (0x67 RET or 0x69 NOTIFY)
                 if (MdrResponseParser.isAscStatePacket(payload)) {
-                    val ascState = MdrResponseParser.parseAscState(payload)
+                    val ascState = MdrResponseParser.parseAscState(payload, _noiseControlState.value)
                     if (ascState != null) {
                         _noiseControlState.value = ascState
                         pendingAscWaiter?.complete(ascState)

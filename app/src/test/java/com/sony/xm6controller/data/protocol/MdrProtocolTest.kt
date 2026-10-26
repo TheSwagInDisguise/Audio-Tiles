@@ -198,6 +198,22 @@ class MdrProtocolTest {
         assertEquals(NoiseControlMode.AMBIENT_SOUND, state!!.mode)
         assertEquals(20, state.ambientLevel)
         assertFalse(state.focusOnVoice)
+
+        // Verify ANC packet status byte (0x01) does not corrupt ambientLevel to 1
+        val ancPayload = byteArrayOf(
+            0x67.toByte(), 0x17, 0x01, 0x01, 0x00, 0x02, 0x00, 0x01
+        )
+        val ancState = MdrResponseParser.parseAscState(ancPayload)
+        assertNotNull(ancState)
+        assertEquals(NoiseControlMode.NOISE_CANCELLING, ancState!!.mode)
+        assertEquals(20, ancState.ambientLevel) // Must remain default 20, NOT 1
+
+        // Verify ANC packet preserves existing ambient level from previous state
+        val prevAmbient = NoiseControlState(mode = NoiseControlMode.AMBIENT_SOUND, ambientLevel = 14)
+        val ancStateWithHistory = MdrResponseParser.parseAscState(ancPayload, prevAmbient)
+        assertNotNull(ancStateWithHistory)
+        assertEquals(NoiseControlMode.NOISE_CANCELLING, ancStateWithHistory!!.mode)
+        assertEquals(14, ancStateWithHistory.ambientLevel) // Preserved previous 14
     }
 
     @Test

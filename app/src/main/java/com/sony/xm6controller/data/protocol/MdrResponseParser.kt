@@ -37,8 +37,10 @@ object MdrResponseParser {
 
     /**
      * Parses an ASC state packet (0x67 RET or 0x69 NOTIFY) supporting both v1 and v2 layouts.
+     * Preserves existing ambientLevel when the packet reports Noise Cancelling or Off mode,
+     * preventing dummy status bytes (e.g. 0x01 in ANC packets) from clobbering ambient level to 1.
      */
-    fun parseAscState(payload: ByteArray): NoiseControlState? {
+    fun parseAscState(payload: ByteArray, previousState: NoiseControlState? = null): NoiseControlState? {
         if (payload.size < 6) return null
         val opcode = payload[0]
         if (opcode != MdrConstants.OP_ASC_RET && opcode != MdrConstants.OP_ASC_NOTIFY) {
@@ -46,17 +48,11 @@ object MdrResponseParser {
         }
 
         val subtype = payload[1]
-        val isV1 = (subtype == MdrConstants.SUBTYPE_NC_ASM_V1 || subtype == 0x01.toByte())
+        val isV1 = (subtype == MdrConstants.SUBTYPE_NC_ASM_V1 || subtype == 0x01.toByte() || subtype == 0x02.toByte())
         val hasWind = (!isV1 && payload.size >= 8)
 
         val onByte = payload[3].toInt() and 0xFF
         val ambByte = payload[4].toInt() and 0xFF
-
-        val voiceIdx = if (hasWind) 6 else 5
-        val levelIdx = voiceIdx + 1
-
-        val voiceByte = if (payload.size > voiceIdx) (payload[voiceIdx].toInt() and 0xFF) else 0
-        val levelByte = if (payload.size > levelIdx) (payload[levelIdx].toInt() and 0xFF) else MdrConstants.AMBIENT_LEVEL_DEFAULT
 
         val mode: NoiseControlMode = when {
             onByte == 0 -> NoiseControlMode.OFF
@@ -64,10 +60,18 @@ object MdrResponseParser {
             else -> NoiseControlMode.NOISE_CANCELLING
         }
 
-        val clampedLevel = if (levelByte in MdrConstants.AMBIENT_LEVEL_MIN..MdrConstants.AMBIENT_LEVEL_MAX) {
+        val voiceIdx = if (hasWind) 6 else 5
+        val levelIdx = voiceIdx + 1
+
+        val voiceByte = if (payload.size > voiceIdx) (payload[voiceIdx].toInt() and 0xFF) else 0
+        val levelByte = if (payload.size > levelIdx) (payload[levelIdx].toInt() and 0xFF) else MdrConstants.AMBIENT_LEVEL_DEFAULT
+
+        // In ANC or Off mode, the byte at levelIdx is a protocol status/mode byte (often 0x01),
+        // NOT the user's ambient sound passthrough volume. Only parse as ambient level when in AMBIENT_SOUND mode.
+        val clampedLevel = if (mode == NoiseControlMode.AMBIENT_SOUND && levelByte in MdrConstants.AMBIENT_LEVEL_MIN..MdrConstants.AMBIENT_LEVEL_MAX) {
             levelByte
         } else {
-            MdrConstants.AMBIENT_LEVEL_DEFAULT
+            previousState?.ambientLevel ?: MdrConstants.AMBIENT_LEVEL_DEFAULT
         }
 
         val windByte = if (hasWind && payload.size > 5) (payload[5].toInt() and 0xFF) else 0
