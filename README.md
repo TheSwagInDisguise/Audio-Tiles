@@ -4,12 +4,12 @@ Universal Noise Control, Quick Settings Tiles & Parametric EQ Studio for **Sony 
 
 A lightweight, zero-telemetry Android companion app targeting **Android 14+ (API 34+)** with specialized optimizations for **ColorOS / Oppo Find X9 Ultra**. Communicates directly with your headset over Bluetooth Classic RFCOMM (SPP) using native Sony MDR v1 & v2 protocol frames — delivering sub-50ms mode switching without the bloat, battery drain, accounts, or background data collection of the proprietary manufacturer app.
 
-[**Download Signed APK (v2.0.2)**](https://github.com/TheSwagInDisguise/Sony-Audio-Tiles/releases/download/v2.0.2/Sony-Audio-Tiles-v2.0.2.apk) • [**Interactive Web Showcase**](https://theswagindisguise.github.io/Sony-Audio-Tiles/) • [**Release Notes**](https://github.com/TheSwagInDisguise/Sony-Audio-Tiles/releases/tag/v2.0.2)
+[**Download Signed APK (v2.0.3)**](https://github.com/TheSwagInDisguise/Sony-Audio-Tiles/releases/download/v2.0.3/Sony-Audio-Tiles-v2.0.3.apk) • [**Interactive Web Showcase**](https://theswagindisguise.github.io/Sony-Audio-Tiles/) • [**Release Notes**](https://github.com/TheSwagInDisguise/Sony-Audio-Tiles/releases/tag/v2.0.3)
 
 ```text
-Official v2.0.2 Release Verification:
-Asset:   Sony-Audio-Tiles-v2.0.2.apk (11.90 MB)
-SHA-256: 539ab0ba24fe5e13d3d31d6cf0819ec88ed67ea009025a33d239f2467ba5af73
+Official v2.0.3 Release Verification:
+Asset:   Sony-Audio-Tiles-v2.0.3.apk (11.90 MB)
+SHA-256: b5e8c235d1c57234a7e50f9424af7d92175ac5fbd3e02e43a3963890896f7f91
 ```
 
 ---
@@ -118,7 +118,7 @@ Common MDR Command Payloads:
 
 ## Quick Installation & Setup
 
-1. **Download APK**: Download `Sony-Audio-Tiles-v2.0.2.apk` from [Releases](https://github.com/TheSwagInDisguise/Sony-Audio-Tiles/releases/tag/v2.0.2).
+1. **Download APK**: Download `Sony-Audio-Tiles-v2.0.3.apk` from [Releases](https://github.com/TheSwagInDisguise/Sony-Audio-Tiles/releases/tag/v2.0.3).
 2. **Pair Headset**: Pair your Sony headphones or earbuds in Android's Bluetooth settings.
 3. **Add Tile**: Swipe down your notification shade twice, tap the Edit (Pencil) icon, and drag **Sony Audio Control** into your active tiles grid.
 4. **ColorOS / Oppo Users**: Open the app once, tap the ⚙️ Settings cog in the top bar, and verify **"Ignore Battery Optimizations"** to ensure background persistence.
