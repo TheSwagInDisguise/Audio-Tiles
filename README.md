@@ -8,8 +8,9 @@ A lightweight, zero-telemetry Android companion app targeting **Android 14+ (API
 
 ```text
 Official v2.1.2 Release Verification:
-Asset:   Audio-Tiles-v2.1.2.apk
+Asset:   Audio-Tiles-v2.1.2.apk (11.92 MB)
 Package: me.audiotiles (Build 20102)
+SHA-256: 6991525806c2f99adc6444ba1f4a9e13ccb5b31968ec953d2539a24c61ed4a10
 ```
 
 ---
