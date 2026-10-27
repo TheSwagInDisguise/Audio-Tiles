@@ -150,10 +150,6 @@ class BluetoothConnectionManager private constructor(private val context: Contex
         registerBluetoothAclReceiver()
     }
 
-    private val PREFS_SETTINGS = "sony_audio_tiles_settings"
-    private val KEY_TILE_CYCLE_SCHEME = "key_tile_cycle_scheme"
-    private val KEY_PREFERRED_DEVICE_ADDR = "key_preferred_device_addr"
-
     fun setTileCycleScheme(scheme: TileCycleScheme) {
         _tileCycleScheme.value = scheme
         val prefs = context.getSharedPreferences(PREFS_SETTINGS, Context.MODE_PRIVATE)
@@ -1209,6 +1205,9 @@ class BluetoothConnectionManager private constructor(private val context: Contex
 
     companion object {
         private const val TAG = "XM6BluetoothManager"
+        private const val PREFS_SETTINGS = "sony_audio_tiles_settings"
+        private const val KEY_TILE_CYCLE_SCHEME = "key_tile_cycle_scheme"
+        private const val KEY_PREFERRED_DEVICE_ADDR = "key_preferred_device_addr"
 
         @Volatile
         private var INSTANCE: BluetoothConnectionManager? = null
