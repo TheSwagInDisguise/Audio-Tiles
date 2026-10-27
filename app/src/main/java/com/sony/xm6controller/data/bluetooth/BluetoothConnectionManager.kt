@@ -36,6 +36,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import com.sony.xm6controller.BuildConfig
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -1022,7 +1024,6 @@ class BluetoothConnectionManager private constructor(private val context: Contex
         _soundFeaturesState.value = _soundFeaturesState.value.copy(soundQualityPriority = qualityPriority)
         touchActivity()
         return Result.success(Unit)
-    }
     }
 
     /**
