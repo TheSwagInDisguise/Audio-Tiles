@@ -1,4 +1,4 @@
 # Sony MDR Controller ProGuard rules
--keep class com.sony.xm6controller.data.protocol.** { *; }
--keep class com.sony.xm6controller.domain.** { *; }
--keep class com.sony.xm6controller.service.** { *; }
+-keep class me.audiotiles.data.protocol.** { *; }
+-keep class me.audiotiles.domain.** { *; }
+-keep class me.audiotiles.service.** { *; }

@@ -1,5 +1,5 @@
 <resources>
-    <style name="Theme.SonyXM6Controller" parent="android:Theme.Material.NoActionBar">
+    <style name="Theme.AudioTiles" parent="android:Theme.Material.NoActionBar">
         <item name="android:statusBarColor">#121212</item>
         <item name="android:navigationBarColor">#121212</item>
     </style>

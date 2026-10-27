@@ -38,7 +38,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.SonyXM6Controller">
+        android:theme="@style/Theme.AudioTiles">
 
         <!-- Setup & Dashboard Activity -->
         <activity
@@ -53,7 +53,7 @@
 
         <!-- Primary Quick Settings Tile Service: Noise Control Cycling -->
         <service
-            android:name=".service.XM6TileService"
+            android:name=".service.NoiseControlTileService"
             android:exported="true"
             android:icon="@drawable/ic_tile_nc"
             android:label="@string/tile_label"
@@ -113,7 +113,7 @@
 
         <!-- App Widget: Compact 2x1 Provider -->
         <receiver
-            android:name=".widget.SonyAudioCompactWidgetProvider"
+            android:name=".widget.AudioCompactWidgetProvider"
             android:exported="true"
             android:label="@string/widget_compact_name">
             <intent-filter>
@@ -126,7 +126,7 @@
 
         <!-- App Widget: Studio 4x2 Provider -->
         <receiver
-            android:name=".widget.SonyAudioStudioWidgetProvider"
+            android:name=".widget.AudioStudioWidgetProvider"
             android:exported="true"
             android:label="@string/widget_studio_name">
             <intent-filter>
@@ -139,7 +139,7 @@
 
         <!-- Foreground Service for Persistent Link / ColorOS Background Survival -->
         <service
-            android:name=".service.XM6ForegroundService"
+            android:name=".service.AudioForegroundService"
             android:exported="false"
             android:foregroundServiceType="connectedDevice" />
 

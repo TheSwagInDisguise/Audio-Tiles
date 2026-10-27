@@ -77,11 +77,11 @@ jobs:
           $ANDROID_HOME/build-tools/34.0.0/apksigner verify --verbose --print-certs "$RAW_APK"
 
           mkdir -p dist
-          FINAL_APK="dist/Sony-Audio-Tiles-${VERSION}.apk"
+          FINAL_APK="dist/Audio-Tiles-${VERSION}.apk"
           cp "$RAW_APK" "$FINAL_APK"
 
           # Compute SHA-256 for release asset
-          (cd dist && sha256sum "Sony-Audio-Tiles-${VERSION}.apk" > "Sony-Audio-Tiles-${VERSION}-sha256.txt")
+          (cd dist && sha256sum "Audio-Tiles-${VERSION}.apk" > "Audio-Tiles-${VERSION}-sha256.txt")
           ls -la dist/
 
       - name: Cleanup Redundant Release Assets
@@ -95,16 +95,16 @@ jobs:
       - name: Create GitHub Release & Upload Assets
         uses: softprops/action-gh-release@v2
         with:
-          name: "Sony Audio Tiles ${{ github.ref_name || inputs.version }}"
+          name: "Audio Tiles ${{ github.ref_name || inputs.version }}"
           draft: false
           prerelease: false
           generate_release_notes: true
           body: |
-            ### 🎧 Sony Audio Tiles - Universal Quick Settings & Sound Connect Hub
+            ### 🎧 Audio Tiles - Quick Settings & Audio Studio for Wireless Headphones
 
             #### Highlights
-            - **Universal Sony Ecosystem**: Seamless support for WH-1000XM6, WH-1000XM5, WH-1000XM4, WH-1000XM3, WF-1000XM5, WF-1000XM4, LinkBuds, ULT WEAR, and WH-CH720N.
-            - **10-Band Graphic Equalizer with Live Spline Curve**: ISO center frequencies (31Hz to 16kHz) with intelligent downsampling to Sony hardware DSP.
+            - **Compatible Ecosystem**: Seamless support for WH-1000XM6, WH-1000XM5, WH-1000XM4, WH-1000XM3, WF-1000XM5, WF-1000XM4, LinkBuds, ULT WEAR, and WH-CH720N.
+            - **10-Band Graphic Equalizer with Live Spline Curve**: ISO center frequencies (31Hz to 16kHz) with intelligent downsampling to hardware DSP.
             - **PEQDB & AutoEq Catalog Search**: Load parametric EQ curves (.peqdb, .json, .txt) with biquad filter transfer function modeling and built-in headphone database.
             - **Real-Time MDR Diagnostics & Dump Export**: Comprehensive packet inspector with one-tap export for rapid troubleshooting.
             - **Model Capability Discovery**: Automatic hardware feature detection and UI adaptation.
@@ -116,5 +116,5 @@ jobs:
             - **Certificate SHA-256**: `77:57:BB:B8:9E:01:6F:7B:E4:F0:B6:7E:1A:18:17:3A:D5:DD:44:80:50:DF:B8:E8:15:A5:07:33:B8:51:D5:7D`
             - **Certificate SHA-1**: `39:DE:D8:30:54:BD:DA:9C:4E:83:04:52:10:BB:7E:EF:11:2B:83:3A`
           files: |
-            dist/Sony-Audio-Tiles-*.apk
-            dist/Sony-Audio-Tiles-*-sha256.txt
+            dist/Audio-Tiles-*.apk
+            dist/Audio-Tiles-*-sha256.txt

@@ -1,20 +1,22 @@
-# Sony Audio Tiles
+# Audio Tiles
 
-Universal Noise Control, Quick Settings Tiles & Parametric EQ Studio for **Sony Wireless Headphones and Earbuds**.
+Universal Noise Control Quick Settings Tiles, Home Widgets & Parametric EQ Studio for **Compatible Wireless ANC Headphones and Earbuds**.
 
-A lightweight, zero-telemetry Android companion app targeting **Android 14+ (API 34+)** with specialized optimizations for **ColorOS / Oppo Find X9 Ultra**. Communicates directly with your headset over Bluetooth Classic RFCOMM (SPP) using native Sony MDR v1 & v2 protocol frames — delivering sub-50ms mode switching without the bloat, battery drain, accounts, or background data collection of the proprietary manufacturer app.
+A lightweight, zero-telemetry Android companion app targeting **Android 14+ (API 34+)** with specialized optimizations for **ColorOS / Oppo Find X9 Ultra**. Communicates directly with your headset over Bluetooth Classic RFCOMM (SPP) using native MDR protocol frames — delivering sub-50ms mode switching without the bloat, battery drain, accounts, or background data collection of the proprietary manufacturer app.
 
-[**Download Signed APK (v2.0.3)**](https://github.com/TheSwagInDisguise/Sony-Audio-Tiles/releases/download/v2.0.3/Sony-Audio-Tiles-v2.0.3.apk) • [**Interactive Web Showcase**](https://theswagindisguise.github.io/Sony-Audio-Tiles/) • [**Release Notes**](https://github.com/TheSwagInDisguise/Sony-Audio-Tiles/releases/tag/v2.0.3)
+[**Download Signed APK (v2.1.0)**](https://github.com/TheSwagInDisguise/Audio-Tiles/releases/download/v2.1.0/Audio-Tiles-v2.1.0.apk) • [**Interactive Web Showcase**](https://theswagindisguise.github.io/Audio-Tiles/) • [**Release Notes**](https://github.com/TheSwagInDisguise/Audio-Tiles/releases/tag/v2.1.0)
 
 ```text
-Official v2.0.3 Release Verification:
-Asset:   Sony-Audio-Tiles-v2.0.3.apk (11.90 MB)
-SHA-256: b5e8c235d1c57234a7e50f9424af7d92175ac5fbd3e02e43a3963890896f7f91
+Official v2.1.0 Release Verification:
+Asset:   Audio-Tiles-v2.1.0.apk
+Package: me.audiotiles (Build 20100)
 ```
 
 ---
 
 ## Supported Devices
+
+*Headphone and earbud model designations are listed strictly for compatibility identification under nominative fair use:*
 
 - **Over-Ear Flagships**: WH-1000XM6, WH-1000XM5, WH-1000XM4, WH-1000XM3, WH-1000XM2, MDR-1000X.
 - **Bass & Mid-Range Over-Ear**: WH-ULT900N (ULT WEAR), WH-XB910N, WH-XB900N, WH-CH720N, WH-CH520.
@@ -29,7 +31,7 @@ SHA-256: b5e8c235d1c57234a7e50f9424af7d92175ac5fbd3e02e43a3963890896f7f91
 Switch modes and audio enhancements directly from your Android notification shade without opening the app:
 - **Primary Noise Control Tile**: Instant one-tap cycling between Noise Cancelling, Ambient Sound, and Off.
   - Supports configurable cycle schemes: 3-Way (`NC → Ambient → Off`), 2-Way (`NC ↔ Ambient`), or Direct (`NC ↔ Off`).
-- **Speak-to-Chat Tile**: One-tap toggle for Sony's conversational voice passthrough.
+- **Speak-to-Chat Tile**: One-tap toggle for conversational voice passthrough.
 - **Clear Bass Stepper Tile**: Step through hardware sub-bass boost levels (-10 to +10 dB) directly from quick settings.
 - **Voice Focus Tile**: Emphasize human speech frequencies while attenuating low-frequency ambient rumble.
 - **Sound Quality Priority Tile**: Switch instantly between LDAC (990 kbps high-res priority) and connection stability priority.
@@ -42,7 +44,7 @@ Switch modes and audio enhancements directly from your Android notification shad
 - **Touch-Draggable Spline Canvas**: Directly touch-drag frequency nodes with tactile haptics and real-time biquad response curve rendering.
 - **Audiophile Target Curve Overlays**: Dotted target curve overlays for Harman Target Over-Ear 2020, Harman In-Ear 2019, Oratory1990 Hi-Fi, and Rtings Neutral.
 - **10 ISO Center Frequencies**: 31Hz, 63Hz, 125Hz, 250Hz, 500Hz, 1kHz, 2kHz, 4kHz, 8kHz, 16kHz ($\pm 12\text{ dB}$).
-- **Hardware DSP Fitting**: Automatically downsamples 10-band adjustments and continuous curves to Sony's hardware DSP (Clear Bass + 5 hardware bands: 400Hz, 1kHz, 2.5kHz, 6.3kHz, 16kHz).
+- **Hardware DSP Fitting**: Automatically downsamples 10-band adjustments and continuous curves to hardware DSP (Clear Bass + 5 hardware bands: 400Hz, 1kHz, 2.5kHz, 6.3kHz, 16kHz).
 - **A/B Audition (Bypass)**: Toggle between Flat 0 dB and your active EQ profile with one tap to compare sound signatures in real time.
 - **Built-in AutoEq & PEQDB Direct Catalog**: 26 pre-computed reference compensation curves derived from lab acoustic measurements (oratory1990 GRAS 43AG, Rtings Bruel & Kjaer 5128 anthropomorphic fixtures, Kuulokenurkka, DHRME). Automatically filters to your connected model on launch.
 - **Universal Import**: Load `.peqdb`, JSON, and AutoEq / EqualizerAPO parametric text files.
@@ -57,15 +59,15 @@ Switch modes and audio enhancements directly from your Android notification shad
 - **Unified Daily-Driver Dashboard**: Telemetry, animated battery rings, direct Noise Control buttons, quick ambient slider, and Clear Bass subwoofer slider in one view.
 - **Progressive Disclosure**: Power-user features (10-Band EQ & AutoEq, Headphone Hardware Features, Smart Audio Automations, and Live Diagnostics) are neatly tucked into collapsible accordions.
 - **Dynamic Palette Reactivity**: Card borders, buttons, and visual accents dynamically adapt to your selected theme:
-  1. `Black & Brushed Copper` (WH-1000XM6 / XM5 Black signature)
-  2. `Platinum Silver & Ice Blue` (WH-1000XM5 Silver signature)
-  3. `Smoky Pink & Rose Gold` (WH-1000XM5 Smoky Pink signature)
-  4. `Midnight Navy & Brass` (WH-1000XM4 Midnight Blue signature)
+  1. `Black & Brushed Copper` (Obsidian finish)
+  2. `Platinum Silver & Ice Blue` (Brushed metal finish)
+  3. `Smoky Pink & Rose Gold` (Warm matte finish)
+  4. `Midnight Navy & Brass` (Deep navy finish)
   5. `Cyberpunk Emerald & Mint` (Vibrant high-contrast dark palette)
   6. `Warm Espresso & Amber` (Deep organic coffee tone)
   7. `Pure OLED Stealth` (Zero-emission deep pitch black for AMOLED displays)
 
-### 6. Full Sound Connect Parity
+### 6. Full OEM Feature Parity
 - **Clear Bass Subwoofer Level**: Direct hardware slider from -10 to +10 dB.
 - **Speak-to-Chat**: Hardware-level voice detection sensitivity and auto-close timer.
 - **DSEE Extreme**: AI high-frequency audio upscaling restoration.
@@ -75,9 +77,9 @@ Switch modes and audio enhancements directly from your Android notification shad
 
 ---
 
-## Comparison: Sony Audio Tiles vs Official Sony Sound Connect
+## Comparison: Audio Tiles vs Official OEM Companion App
 
-| Feature | Sony Audio Tiles (This App) | Official Sony Sound Connect |
+| Feature | Audio Tiles (This App) | Official OEM App |
 | :--- | :--- | :--- |
 | **Quick Settings Tile** | **Yes** (Native Android 14+ Quick Tile) | No (Not Supported) |
 | **Home Screen Widgets** | **Yes** (2x1 Compact + 4x2 Studio Dashboard) | Limited |
@@ -95,12 +97,12 @@ Switch modes and audio enhancements directly from your Android notification shad
 
 ---
 
-## Reverse-Engineered Sony MDR Protocol
+## Clean Wire-Level MDR Protocol
 
-Sony Audio Tiles communicates directly with Sony audio devices over Bluetooth Classic RFCOMM (SPP) using the Sony MDR protocol without proprietary SDKs:
+Audio Tiles communicates directly with compatible Bluetooth audio devices over Bluetooth Classic RFCOMM (SPP) using native MDR protocol frames without proprietary closed-source SDKs:
 
 ```text
-Sony MDR v2 Escaped Frame Structure:
+MDR v2 Escaped Frame Structure:
 [Header: 0x3E] [Type: 1B] [Seq: 1B] [Payload Length: 4B BE] [Payload Bytes...] [Checksum: 1B] [Trailer: 0x3C]
 Escape Byte: 0x3D (Escaped value = original ^ 0xEF)
 
@@ -118,9 +120,9 @@ Common MDR Command Payloads:
 
 ## Quick Installation & Setup
 
-1. **Download APK**: Download `Sony-Audio-Tiles-v2.0.3.apk` from [Releases](https://github.com/TheSwagInDisguise/Sony-Audio-Tiles/releases/tag/v2.0.3).
-2. **Pair Headset**: Pair your Sony headphones or earbuds in Android's Bluetooth settings.
-3. **Add Tile**: Swipe down your notification shade twice, tap the Edit (Pencil) icon, and drag **Sony Audio Control** into your active tiles grid.
+1. **Download APK**: Download `Audio-Tiles-v2.1.0.apk` from [Releases](https://github.com/TheSwagInDisguise/Audio-Tiles/releases/tag/v2.1.0).
+2. **Pair Headset**: Pair your headphones or earbuds in Android's Bluetooth settings.
+3. **Add Tile**: Swipe down your notification shade twice, tap the Edit (Pencil) icon, and drag **Audio Control** into your active tiles grid.
 4. **ColorOS / Oppo Users**: Open the app once, tap the ⚙️ Settings cog in the top bar, and verify **"Ignore Battery Optimizations"** to ensure background persistence.
 
 ---
@@ -130,8 +132,8 @@ Common MDR Command Payloads:
 Prerequisites: JDK 17 and Android SDK (API 34).
 
 ```bash
-git clone https://github.com/TheSwagInDisguise/Sony-Audio-Tiles.git
-cd Sony-Audio-Tiles
+git clone https://github.com/TheSwagInDisguise/Audio-Tiles.git
+cd Audio-Tiles
 
 # Run all unit and protocol regression tests
 ./gradlew testDebugUnitTest
@@ -145,20 +147,21 @@ cd Sony-Audio-Tiles
 
 ---
 
-## License & Credits
+## ⚖️ Legal & Trademark Notice
 
+- **Trademark Notice**: Sony® and Xperia® are registered trademarks of Sony Group Corporation.
+- **Non-Affiliation**: This project is an independent open-source utility and is not developed by, affiliated with, sponsored by, or endorsed by Sony Group Corporation, Oppo, or any of their subsidiaries.
+- **Fair Use**: All product names, logos, brands, and registered trademarks mentioned are property of their respective owners. Headphone and earbud model designations (e.g. WH-1000XM5, WF-1000XM5) are used strictly to identify hardware compatibility under nominative fair use.
 - **License**: [MIT License](LICENSE)
 - **Protocol References & Prior Art**:
   - `mos9527/SonyHeadphonesClient`
   - `marconvcm/sony-device-center`
   - `Freeyourgadget/Gadgetbridge`
   - `snizovtsev/xm5-mode-switch`
-  - `AutoEq / jaakkopasanen` (Database of acoustic target curves)
-
-*Disclaimer: This is an independent open-source project and is not affiliated with, endorsed by, or connected to Sony Group Corporation or Oppo.*
+  - `AutoEq / jaakkopasanen` (Acoustic measurement databases)
 
 ---
 
 ## AI Use Disclaimer
 
-Portions of this codebase, protocol parsers, visual components, unit tests, and documentation were generated, refactored, and maintained with the assistance of artificial intelligence tools and large language models, followed by human architecture review and verification against Sony hardware captures.
+Portions of this codebase, protocol parsers, visual components, unit tests, and documentation were generated, refactored, and maintained with the assistance of artificial intelligence tools and large language models, followed by human architecture review and verification against hardware captures.

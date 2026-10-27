@@ -5,19 +5,19 @@ plugins {
 }
 
 android {
-    namespace = "com.sony.xm6controller"
+    namespace = "me.audiotiles"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.sony.xm6controller"
+        applicationId = "me.audiotiles"
         minSdk = 26
         targetSdk = 34
 
         val envVerName = System.getenv("VERSION_NAME")
         val envVerCode = System.getenv("VERSION_CODE")?.toIntOrNull()
 
-        versionCode = envVerCode ?: 20003
-        versionName = envVerName ?: "2.0.3"
+        versionCode = envVerCode ?: 20100
+        versionName = envVerName ?: "2.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
