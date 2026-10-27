@@ -4,13 +4,12 @@ Universal Noise Control Quick Settings Tiles, Home Widgets & Parametric EQ Studi
 
 A lightweight, zero-telemetry Android companion app targeting **Android 14+ (API 34+)** with specialized optimizations for **ColorOS / Oppo Find X9 Ultra**. Communicates directly with your headset over Bluetooth Classic RFCOMM (SPP) using native MDR protocol frames — delivering sub-50ms mode switching without the bloat, battery drain, accounts, or background data collection of the proprietary manufacturer app.
 
-[**Download Signed APK (v2.1.0)**](https://github.com/TheSwagInDisguise/Audio-Tiles/releases/download/v2.1.0/Audio-Tiles-v2.1.0.apk) • [**Interactive Web Showcase**](https://theswagindisguise.github.io/Audio-Tiles/) • [**Release Notes**](https://github.com/TheSwagInDisguise/Audio-Tiles/releases/tag/v2.1.0)
+[**Download Signed APK (v2.1.1)**](https://github.com/TheSwagInDisguise/Audio-Tiles/releases/download/v2.1.1/Audio-Tiles-v2.1.1.apk) • [**Interactive Web Showcase**](https://theswagindisguise.github.io/Audio-Tiles/) • [**Release Notes**](https://github.com/TheSwagInDisguise/Audio-Tiles/releases/tag/v2.1.1)
 
 ```text
-Official v2.1.0 Release Verification:
-Asset:   Audio-Tiles-v2.1.0.apk (11.90 MB)
-Package: me.audiotiles (Build 20100)
-SHA-256: 4f28ed5278dfcaeb169c7998860b156be76e0901ddbe86fff52e7135bec3a37c
+Official v2.1.1 Release Verification:
+Asset:   Audio-Tiles-v2.1.1.apk
+Package: me.audiotiles (Build 20101)
 ```
 
 ---
@@ -121,7 +120,10 @@ Common MDR Command Payloads:
 
 ## Quick Installation & Setup
 
-1. **Download APK**: Download `Audio-Tiles-v2.1.0.apk` from [Releases](https://github.com/TheSwagInDisguise/Audio-Tiles/releases/tag/v2.1.0).
+> **⚠️ Upgrading from v2.0.x (Old Package `com.sony.xm6controller`)**:
+> Because the package identifier was migrated to `me.audiotiles` for trademark compliance, Android installs this version alongside the legacy build rather than replacing it. **Please uninstall any previous version (`com.sony.xm6controller` or `Sony XM6 Controller`) before connecting**, otherwise both apps will contend for the single Bluetooth control channel and drop connections.
+
+1. **Download APK**: Download `Audio-Tiles-v2.1.1.apk` from [Releases](https://github.com/TheSwagInDisguise/Audio-Tiles/releases/tag/v2.1.1).
 2. **Pair Headset**: Pair your headphones or earbuds in Android's Bluetooth settings.
 3. **Add Tile**: Swipe down your notification shade twice, tap the Edit (Pencil) icon, and drag **Audio Control** into your active tiles grid.
 4. **ColorOS / Oppo Users**: Open the app once, tap the ⚙️ Settings cog in the top bar, and verify **"Ignore Battery Optimizations"** to ensure background persistence.

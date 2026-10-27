@@ -31,6 +31,9 @@ class BluetoothSocketWrapper(
 ) {
 
     private var socket: BluetoothSocket? = null
+    @Volatile
+    private var activeConnectingSocket: BluetoothSocket? = null
+
     var inputStream: InputStream? = null
         private set
     var outputStream: OutputStream? = null
@@ -60,14 +63,25 @@ class BluetoothSocketWrapper(
             }
         } catch (_: SecurityException) {}
 
+        val deadline = System.currentTimeMillis() + timeoutMs
+        val overallWatchdog = kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+            delay(timeoutMs)
+            log("Connection deadline reached ($timeoutMs ms), aborting socket connect syscall...")
+            try {
+                activeConnectingSocket?.close()
+            } catch (_: Exception) {}
+            close()
+        }
+
         try {
-            withTimeout(timeoutMs) {
-                attemptMultiTierConnect()
-            }
+            attemptMultiTierConnect(deadline)
             Result.success(Unit)
         } catch (e: Exception) {
             close()
             Result.failure(e)
+        } finally {
+            overallWatchdog.cancel()
+            activeConnectingSocket = null
         }
     }
 
@@ -117,20 +131,34 @@ class BluetoothSocketWrapper(
     }
 
     @SuppressLint("MissingPermission")
-    private suspend fun attemptMultiTierConnect() {
+    private suspend fun attemptMultiTierConnect(deadlineMs: Long) {
         val uuidsToTry = resolveCandidateUuids()
         var lastException: Exception? = null
 
         // Connect to identified Sony MDR UUIDs (Insecure preferred for bonded headsets, Secure fallback)
         for ((index, uuid) in uuidsToTry.withIndex()) {
+            if (System.currentTimeMillis() >= deadlineMs) {
+                throw lastException ?: IOException("Connection deadline elapsed")
+            }
+
             val shortUuid = uuid.toString().substring(0, 8) + "..."
 
             // Sub-tier A: Insecure RFCOMM (standard for Android 12+ on bonded A2DP headsets)
             var socketCandidate: BluetoothSocket? = null
+            val perAttemptA = kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+                delay(3500L)
+                try {
+                    socketCandidate?.close()
+                } catch (_: Exception) {}
+            }
+
             try {
                 log("Tier 1.${index + 1}A: Insecure RFCOMM -> $shortUuid")
                 socketCandidate = device.createInsecureRfcommSocketToServiceRecord(uuid)
+                activeConnectingSocket = socketCandidate
                 socketCandidate.connect()
+                perAttemptA.cancel()
+                activeConnectingSocket = null
 
                 socket = socketCandidate
                 inputStream = socketCandidate.inputStream
@@ -138,20 +166,36 @@ class BluetoothSocketWrapper(
                 log("Connected successfully via Insecure RFCOMM ($shortUuid)")
                 return
             } catch (e: Exception) {
+                perAttemptA.cancel()
+                activeConnectingSocket = null
                 lastException = e
                 try {
                     socketCandidate?.close()
                 } catch (_: Exception) {}
                 log("Insecure RFCOMM failed ($shortUuid): ${e.message?.take(60)}")
-                delay(100L) // Allow Bluetooth stack to release channel
+                delay(80L) // Allow Bluetooth stack to release channel
+            }
+
+            if (System.currentTimeMillis() >= deadlineMs) {
+                throw lastException ?: IOException("Connection deadline elapsed")
             }
 
             // Sub-tier B: Secure RFCOMM fallback
             socketCandidate = null
+            val perAttemptB = kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+                delay(3500L)
+                try {
+                    socketCandidate?.close()
+                } catch (_: Exception) {}
+            }
+
             try {
                 log("Tier 1.${index + 1}B: Secure RFCOMM -> $shortUuid")
                 socketCandidate = device.createRfcommSocketToServiceRecord(uuid)
+                activeConnectingSocket = socketCandidate
                 socketCandidate.connect()
+                perAttemptB.cancel()
+                activeConnectingSocket = null
 
                 socket = socketCandidate
                 inputStream = socketCandidate.inputStream
@@ -159,12 +203,14 @@ class BluetoothSocketWrapper(
                 log("Connected successfully via Secure RFCOMM ($shortUuid)")
                 return
             } catch (e: Exception) {
+                perAttemptB.cancel()
+                activeConnectingSocket = null
                 lastException = e
                 try {
                     socketCandidate?.close()
                 } catch (_: Exception) {}
                 log("Secure RFCOMM failed ($shortUuid): ${e.message?.take(60)}")
-                delay(100L)
+                delay(80L)
             }
         }
 

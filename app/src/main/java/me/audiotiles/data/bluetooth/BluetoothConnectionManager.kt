@@ -462,15 +462,21 @@ class BluetoothConnectionManager private constructor(private val context: Contex
         }
     }
 
+    @Volatile
+    private var pendingAckSequence: Int? = null
+
     /**
      * Sends framed packet and waits for device ACK, preventing sequence desync.
      */
     private suspend fun sendFrameWithAck(frame: ByteArray, timeoutMs: Long = 2000L): Result<Unit> {
+        val currentSeq = txSequence
         val waiter = CompletableDeferred<Int>()
+        pendingAckSequence = currentSeq
         pendingAckWaiter = waiter
 
         if (!sendRawBytes(frame)) {
             pendingAckWaiter = null
+            pendingAckSequence = null
             return Result.failure(IOException("Failed to write frame to Bluetooth socket"))
         }
 
@@ -478,11 +484,15 @@ class BluetoothConnectionManager private constructor(private val context: Contex
             waiter.await()
         }
         pendingAckWaiter = null
+        pendingAckSequence = null
 
         if (ackReceived == null) {
-            addLog("Warning: Frame timed out waiting for device ACK (seq=$txSequence)")
+            addLog("Warning: Frame timed out waiting for device ACK (seq=$currentSeq)")
             return Result.failure(IOException("Timeout waiting for headset ACK"))
         }
+
+        // Successfully received matching device ACK, advance txSequence
+        txSequence = 1 - txSequence
         return Result.success(Unit)
     }
 
@@ -508,8 +518,9 @@ class BluetoothConnectionManager private constructor(private val context: Contex
         val deviceName = device.name ?: "Wireless Headphone"
         val address = device.address
 
-        val currentConnectedAddr = (_connectionState.value as? ConnectionState.Connected)?.address
-        if (socketWrapper?.isConnected == true) {
+        val isConnectedState = _connectionState.value is ConnectionState.Connected
+        if (socketWrapper?.isConnected == true && isConnectedState) {
+            val currentConnectedAddr = (_connectionState.value as? ConnectionState.Connected)?.address
             if (currentConnectedAddr != null && !currentConnectedAddr.equals(address, ignoreCase = true)) {
                 addLog("Switching connection from $currentConnectedAddr to $deviceName ($address)")
                 disconnectInternal()
@@ -1085,7 +1096,13 @@ class BluetoothConnectionManager private constructor(private val context: Contex
                     logDiagnostic(LogDirection.ERROR, opcodeName = "SOCKET_EX", note = "Socket read exception: ${e.message}")
                 }
             } finally {
+                try {
+                    wrapper.close()
+                } catch (_: Exception) {}
                 withContext(Dispatchers.Main) {
+                    if (socketWrapper === wrapper) {
+                        socketWrapper = null
+                    }
                     if (_connectionState.value is ConnectionState.Connected) {
                         _connectionState.value = ConnectionState.Disconnected("Connection closed by peer")
                         logDiagnostic(LogDirection.INFO, opcodeName = "DISCONNECT", note = "RFCOMM connection closed.")
@@ -1101,9 +1118,14 @@ class BluetoothConnectionManager private constructor(private val context: Contex
     private fun handleIncomingPacket(packet: MdrPacket) {
         when (packet.type) {
             MdrConstants.TYPE_ACK -> {
-                txSequence = 1 - txSequence
-                logDiagnostic(LogDirection.ACK_RX, opcodeName = "DEVICE_ACK", note = "Headset confirmed frame (seq=${packet.sequence})")
-                pendingAckWaiter?.complete(packet.sequence)
+                val expected = pendingAckSequence
+                val waiter = pendingAckWaiter
+                logDiagnostic(LogDirection.ACK_RX, opcodeName = "DEVICE_ACK", note = "Headset confirmed frame (seq=${packet.sequence}, expected=$expected)")
+                if (waiter != null && (expected == null || packet.sequence == expected || packet.sequence == (1 - expected))) {
+                    waiter.complete(packet.sequence)
+                } else {
+                    addLog("Ignored late or unexpected device ACK (seq=${packet.sequence}, expected=$expected)")
+                }
             }
 
             MdrConstants.TYPE_COMMAND_1,

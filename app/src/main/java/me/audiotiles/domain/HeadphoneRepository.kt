@@ -120,7 +120,15 @@ class HeadphoneRepository(private val context: Context) {
         return res
     }
 
-    suspend fun setEqualizerBands(preset: EqPreset, clearBass: Int, bands: List<Int>): Result<Unit> {
+    suspend fun setEqualizerBands(
+        preset: EqPreset,
+        clearBass: Int,
+        bands: List<Int>,
+        isDynamicCompensation: Boolean = false
+    ): Result<Unit> {
+        if (!isDynamicCompensation) {
+            dynamicBassManager.onManualClearBassChanged(clearBass)
+        }
         val res = connectionManager.setEqualizerBands(preset, clearBass, bands)
         notifyWidgetUpdates()
         return res

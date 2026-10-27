@@ -145,9 +145,21 @@ class DynamicBassManager(
             // Restore base Clear Bass
             scope.launch {
                 val bands = repository.equalizerState.value.bands
-                repository.setEqualizerBands(EqPreset.CUSTOM_1, baseClearBass, bands)
+                repository.setEqualizerBands(EqPreset.CUSTOM_1, baseClearBass, bands, isDynamicCompensation = true)
             }
         }
+    }
+
+    fun onManualClearBassChanged(newClearBass: Int) {
+        val currentOffset = _currentCompensationOffset.value
+        val newBase = if (_isEnabled.value) {
+            (newClearBass - currentOffset).coerceIn(-10, 10)
+        } else {
+            newClearBass.coerceIn(-10, 10)
+        }
+        baseClearBass = newBase
+        val prefs = context.getSharedPreferences("smart_audio_prefs", Context.MODE_PRIVATE)
+        prefs.edit().putInt("base_clear_bass", baseClearBass).apply()
     }
 
     private fun startObserving() {
@@ -194,7 +206,7 @@ class DynamicBassManager(
             val targetCb = (baseClearBass + offset).coerceIn(-10, 10)
             scope.launch {
                 val bands = repository.equalizerState.value.bands
-                repository.setEqualizerBands(EqPreset.CUSTOM_1, targetCb, bands)
+                repository.setEqualizerBands(EqPreset.CUSTOM_1, targetCb, bands, isDynamicCompensation = true)
             }
         }
     }

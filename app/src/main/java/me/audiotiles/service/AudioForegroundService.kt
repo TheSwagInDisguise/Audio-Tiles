@@ -19,6 +19,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /**
@@ -36,7 +39,7 @@ class AudioForegroundService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        isServiceRunning = true
+        _isServiceRunning.value = true
         repository = HeadphoneRepository.getInstance(applicationContext)
         createNotificationChannel()
     }
@@ -60,6 +63,14 @@ class AudioForegroundService : Service() {
                         android.Manifest.permission.BLUETOOTH_CONNECT
                     ) == android.content.pm.PackageManager.PERMISSION_GRANTED
                     if (!hasBtPermission) {
+                        android.util.Log.w(TAG, "BLUETOOTH_CONNECT missing in onStartCommand, satisfying startForeground then stopping")
+                        try {
+                            val fallbackNotif = buildNotification(title = "Audio Tiles", content = "Bluetooth permission required")
+                            startForeground(NOTIFICATION_ID, fallbackNotif)
+                            stopForeground(STOP_FOREGROUND_REMOVE)
+                        } catch (e: Exception) {
+                            android.util.Log.w(TAG, "Fallback notification error: ${e.message}")
+                        }
                         stopSelf()
                         return START_NOT_STICKY
                     }
@@ -191,14 +202,15 @@ class AudioForegroundService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        isServiceRunning = false
+        _isServiceRunning.value = false
         serviceScope.cancel()
     }
 
     companion object {
-        @Volatile
-        var isServiceRunning: Boolean = false
-            private set
+        private const val TAG = "AudioForegroundService"
+
+        private val _isServiceRunning = MutableStateFlow(false)
+        val isServiceRunning: StateFlow<Boolean> = _isServiceRunning.asStateFlow()
 
         const val CHANNEL_ID = "xm6_connection_channel"
         const val NOTIFICATION_ID = 1001
@@ -207,13 +219,27 @@ class AudioForegroundService : Service() {
         const val ACTION_TOGGLE_MODE = "me.audiotiles.action.TOGGLE_MODE"
 
         fun start(context: Context) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val hasBtPermission = androidx.core.content.ContextCompat.checkSelfPermission(
+                    context,
+                    android.Manifest.permission.BLUETOOTH_CONNECT
+                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                if (!hasBtPermission) {
+                    android.util.Log.w(TAG, "Cannot start AudioForegroundService: BLUETOOTH_CONNECT permission not granted")
+                    return
+                }
+            }
             val intent = Intent(context, AudioForegroundService::class.java).apply {
                 action = ACTION_START_SERVICE
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e(TAG, "Failed to start foreground service: ${e.message}")
             }
         }
 
@@ -221,7 +247,11 @@ class AudioForegroundService : Service() {
             val intent = Intent(context, AudioForegroundService::class.java).apply {
                 action = ACTION_STOP_SERVICE
             }
-            context.startService(intent)
+            try {
+                context.startService(intent)
+            } catch (e: Exception) {
+                android.util.Log.e(TAG, "Failed to stop foreground service: ${e.message}")
+            }
         }
     }
 }

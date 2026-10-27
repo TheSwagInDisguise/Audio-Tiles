@@ -247,7 +247,7 @@ fun MainScreen(
     var showDiagnosticsSection by remember { mutableStateOf(false) }
     var settingsDialogVisible by remember { mutableStateOf(false) }
 
-    var foregroundServiceEnabled by remember { mutableStateOf(false) }
+    val foregroundServiceEnabled by me.audiotiles.service.AudioForegroundService.isServiceRunning.collectAsState()
     var connectionErrorDialog by remember { mutableStateOf<String?>(null) }
     var pastePeqDialogVisible by remember { mutableStateOf(false) }
     var autoEqCatalogVisible by remember { mutableStateOf(false) }
@@ -664,12 +664,11 @@ fun MainScreen(
                 onSelectScheme = { scheme -> repository.setTileCycleScheme(scheme) },
                 foregroundServiceEnabled = foregroundServiceEnabled,
                 onToggleForegroundService = { enabled ->
-                    foregroundServiceEnabled = enabled
                     if (enabled) {
-                        AudioForegroundService.start(context)
+                        me.audiotiles.service.AudioForegroundService.start(context)
                         Toast.makeText(context, "Persistent background service started", Toast.LENGTH_SHORT).show()
                     } else {
-                        AudioForegroundService.stop(context)
+                        me.audiotiles.service.AudioForegroundService.stop(context)
                         Toast.makeText(context, "Persistent background service stopped", Toast.LENGTH_SHORT).show()
                     }
                 },
