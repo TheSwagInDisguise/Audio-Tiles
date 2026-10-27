@@ -423,10 +423,10 @@ class BluetoothConnectionManager private constructor(private val context: Contex
      */
     private fun touchActivity() {
         idleDisconnectJob?.cancel()
-        if (!AudioForegroundService.isServiceRunning) {
+        if (!AudioForegroundService.isServiceRunning.value) {
             idleDisconnectJob = scope.launch {
                 delay(120_000L) // 2 minutes idle timeout
-                if (socketWrapper?.isConnected == true && !AudioForegroundService.isServiceRunning) {
+                if (socketWrapper?.isConnected == true && !AudioForegroundService.isServiceRunning.value) {
                     addLog("Power Saver: Auto-disconnecting idle RFCOMM socket (120s timeout)")
                     disconnectInternal()
                 }
