@@ -537,11 +537,17 @@ class BluetoothConnectionManager private constructor(private val context: Contex
         addLog("Connecting RFCOMM socket to $deviceName ($address)...")
 
         val wrapper = BluetoothSocketWrapper(device, ::addLog)
-        val connectResult = wrapper.connect(timeoutMs = 14000L)
+        val connectResult = wrapper.connect(timeoutMs = 18000L)
         if (connectResult.isFailure) {
             val ex = connectResult.exceptionOrNull() ?: IOException("Connection failed")
-            val msg = if (ex.message?.contains("read ret: -1") == true || ex.message?.contains("closed") == true) {
-                "Failed to connect: Headset closed connection (read ret: -1). If OEM Sound Connect is open, force stop it."
+            val rawMsg = ex.message ?: ""
+            val isOemConflict = rawMsg.contains("read ret: -1") ||
+                                rawMsg.contains("closed") ||
+                                rawMsg.contains("Socket failure") ||
+                                rawMsg.contains("Bluetooth Socket") ||
+                                rawMsg.contains("Sound Connect")
+            val msg = if (isOemConflict) {
+                "Failed to connect: Headset rejected or closed connection. If OEM Sound Connect is running, force stop it."
             } else {
                 "Failed to connect: ${ex.message}"
             }

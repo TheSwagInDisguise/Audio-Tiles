@@ -32,6 +32,13 @@
         android:name="android.hardware.bluetooth"
         android:required="true" />
 
+    <!-- Package visibility declarations for companion app conflict detection (Android 11+ / API 30+) -->
+    <queries>
+        <package android:name="jp.co.sony.mc.soundconnect" />
+        <package android:name="com.sony.songpal.mdr" />
+        <package android:name="jp.co.sony.songpal.mdr" />
+    </queries>
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"

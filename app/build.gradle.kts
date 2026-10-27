@@ -16,8 +16,8 @@ android {
         val envVerName = System.getenv("VERSION_NAME")
         val envVerCode = System.getenv("VERSION_CODE")?.toIntOrNull()
 
-        versionCode = envVerCode ?: 20101
-        versionName = envVerName ?: "2.1.1"
+        versionCode = envVerCode ?: 20102
+        versionName = envVerName ?: "2.1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

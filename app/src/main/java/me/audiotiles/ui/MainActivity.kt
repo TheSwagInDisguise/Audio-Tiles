@@ -282,12 +282,14 @@ fun MainScreen(
     }
 
     val isSongpalInstalled = remember {
-        try {
-            context.packageManager.getPackageInfo("com.sony.songpal.mdr", 0)
-            true
-        } catch (_: Exception) {
+        val candidatePackages = listOf(
+            "jp.co.sony.mc.soundconnect",
+            "com.sony.songpal.mdr",
+            "jp.co.sony.songpal.mdr"
+        )
+        candidatePackages.any { pkg ->
             try {
-                context.packageManager.getPackageInfo("jp.co.sony.songpal.mdr", 0)
+                context.packageManager.getPackageInfo(pkg, 0)
                 true
             } catch (_: Exception) {
                 false
@@ -421,11 +423,7 @@ fun MainScreen(
                             val result = repository.connect(dev)
                             if (result.isFailure) {
                                 val msg = result.exceptionOrNull()?.message ?: "Unknown error"
-                                if (msg.contains("read ret: -1") || msg.contains("closed") || msg.contains("timeout") || msg.contains("Failed to establish")) {
-                                    connectionErrorDialog = msg
-                                } else {
-                                    Toast.makeText(context, "Connect failed: $msg", Toast.LENGTH_LONG).show()
-                                }
+                                connectionErrorDialog = msg
                             }
                         }
                     },
@@ -439,19 +437,7 @@ fun MainScreen(
                 item {
                     OemCompanionNoticeCard(
                         onOpenAppSettings = {
-                            try {
-                                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                    data = Uri.parse("package:com.sony.songpal.mdr")
-                                }
-                                context.startActivity(intent)
-                            } catch (_: Exception) {
-                                try {
-                                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                        data = Uri.parse("package:jp.co.sony.songpal.mdr")
-                                    }
-                                    context.startActivity(intent)
-                                } catch (_: Exception) {}
-                            }
+                            openCompanionAppSettings(context)
                         }
                     )
                 }
@@ -809,25 +795,38 @@ fun MainScreen(
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Connection Rejected", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text("Connection Failed", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     }
                 },
                 text = {
                     Column {
                         Text(
-                            text = "Headphone rejected or closed the RFCOMM socket.",
+                            text = "Headphone rejected or could not establish the Bluetooth control socket.",
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 14.sp
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Headphones only permit ONE active app connection at a time.\n\n" +
-                                    "1. Force stop OEM Sound Connect / Headphones Connect if running.\n" +
-                                    "2. Ensure device is connected for phone audio in Bluetooth settings.\n" +
+                            text = "Sony headphones and earbuds allow only ONE active app on their Bluetooth control channel at a time.\n\n" +
+                                    "1. If Sony Sound Connect or Headphones Connect is running, force stop it in App Info.\n" +
+                                    "2. Ensure the headphones are actively connected for audio in Bluetooth settings.\n" +
                                     "3. Tap 'Try Again'.",
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f)
                         )
+                        if (isSongpalInstalled) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            OutlinedButton(
+                                onClick = {
+                                    openCompanionAppSettings(context)
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Open Sony App Info to Force Stop")
+                            }
+                        }
                     }
                 },
                 confirmButton = {
@@ -2506,6 +2505,25 @@ fun StatusPill(connectionState: ConnectionState) {
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
         )
+    }
+}
+
+fun openCompanionAppSettings(context: Context) {
+    val candidatePackages = listOf(
+        "jp.co.sony.mc.soundconnect",
+        "com.sony.songpal.mdr",
+        "jp.co.sony.songpal.mdr"
+    )
+    for (pkg in candidatePackages) {
+        try {
+            context.packageManager.getPackageInfo(pkg, 0)
+            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.parse("package:$pkg")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(intent)
+            return
+        } catch (_: Exception) {}
     }
 }
 
