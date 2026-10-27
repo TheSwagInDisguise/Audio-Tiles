@@ -27,7 +27,6 @@
     <!-- ColorOS Guardrail: WakeLock for Quick Settings Tile tap non-freeze -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
-    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
 
     <uses-feature
         android:name="android.hardware.bluetooth"
@@ -119,7 +118,6 @@
             android:label="@string/widget_compact_name">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.sony.xm6controller.widget.ACTION_CYCLE_MODE" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
@@ -133,9 +131,6 @@
             android:label="@string/widget_studio_name">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.sony.xm6controller.widget.ACTION_SET_MODE" />
-                <action android:name="com.sony.xm6controller.widget.ACTION_TOGGLE_S2C" />
-                <action android:name="com.sony.xm6controller.widget.ACTION_TOGGLE_BYPASS" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"

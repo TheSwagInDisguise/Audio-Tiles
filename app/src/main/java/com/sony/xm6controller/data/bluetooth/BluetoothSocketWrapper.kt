@@ -103,32 +103,12 @@ class BluetoothSocketWrapper(
             }
         }
 
-        // Priority 2: Other cached non-standard 128-bit UUIDs (skipping standard audio/AVRCP/HID profiles)
-        val standardProfiles = setOf(
-            "00001108", // HSP
-            "0000110b", // A2DP Sink
-            "0000110c", // AVRCP Target
-            "0000110e", // AVRCP Controller
-            "0000111e", // HFP
-            "00001200", // PnP
-            "00000000"
-        )
-        for (uuid in cachedUuids) {
-            val str = uuid.toString().lowercase()
-            val isStandard = standardProfiles.any { str.startsWith(it) }
-            if (!isStandard && !candidates.contains(uuid)) {
-                candidates.add(uuid)
-            }
+        // Priority 2: If no Sony UUID was in SDP cache, add all known Sony MDR UUIDs
+        if (candidates.isEmpty()) {
+            candidates.addAll(knownSonyUuids)
         }
 
-        // Priority 3: All known Sony MDR UUIDs in standard order
-        for (known in knownSonyUuids) {
-            if (!candidates.contains(known)) {
-                candidates.add(known)
-            }
-        }
-
-        // Priority 4: Generic SPP only as fallback
+        // Priority 3: Generic Serial Port Profile (SPP) as fallback
         if (!candidates.contains(MdrConstants.UUID_SPP)) {
             candidates.add(MdrConstants.UUID_SPP)
         }
@@ -141,11 +121,11 @@ class BluetoothSocketWrapper(
         val uuidsToTry = resolveCandidateUuids()
         var lastException: Exception? = null
 
-        // Tiers 1 & 2: Service Record SDP connections (Insecure preferred, Secure fallback)
+        // Connect to identified Sony MDR UUIDs (Insecure preferred for bonded headsets, Secure fallback)
         for ((index, uuid) in uuidsToTry.withIndex()) {
             val shortUuid = uuid.toString().substring(0, 8) + "..."
 
-            // Sub-tier A: Insecure RFCOMM (Essential for Android 14+ on already-bonded A2DP headsets)
+            // Sub-tier A: Insecure RFCOMM (standard for Android 12+ on bonded A2DP headsets)
             var socketCandidate: BluetoothSocket? = null
             try {
                 log("Tier 1.${index + 1}A: Insecure RFCOMM -> $shortUuid")
@@ -163,7 +143,7 @@ class BluetoothSocketWrapper(
                     socketCandidate?.close()
                 } catch (_: Exception) {}
                 log("Insecure RFCOMM failed ($shortUuid): ${e.message?.take(60)}")
-                delay(120L) // Allow Bluetooth stack to release channel
+                delay(100L) // Allow Bluetooth stack to release channel
             }
 
             // Sub-tier B: Secure RFCOMM fallback
@@ -184,52 +164,6 @@ class BluetoothSocketWrapper(
                     socketCandidate?.close()
                 } catch (_: Exception) {}
                 log("Secure RFCOMM failed ($shortUuid): ${e.message?.take(60)}")
-                delay(120L)
-            }
-        }
-
-        // Tier 3: Direct Channel Reflection Fallback (bypasses corrupted SDP caches on OEM ROMs)
-        val channelsToTry = listOf(1, 2, 8, 9)
-        for (channel in channelsToTry) {
-            // Channel Insecure Reflection
-            var reflectionSocket: BluetoothSocket? = null
-            try {
-                log("Tier 3A: Insecure Channel Reflection -> ch $channel")
-                val method = device.javaClass.getMethod("createInsecureRfcommSocket", Int::class.javaPrimitiveType)
-                reflectionSocket = method.invoke(device, channel) as BluetoothSocket
-                reflectionSocket.connect()
-
-                socket = reflectionSocket
-                inputStream = reflectionSocket.inputStream
-                outputStream = reflectionSocket.outputStream
-                log("Connected successfully via Insecure Channel $channel")
-                return
-            } catch (e: Exception) {
-                lastException = e
-                try {
-                    reflectionSocket?.close()
-                } catch (_: Exception) {}
-                delay(100L)
-            }
-
-            // Channel Secure Reflection
-            reflectionSocket = null
-            try {
-                log("Tier 3B: Secure Channel Reflection -> ch $channel")
-                val method = device.javaClass.getMethod("createRfcommSocket", Int::class.javaPrimitiveType)
-                reflectionSocket = method.invoke(device, channel) as BluetoothSocket
-                reflectionSocket.connect()
-
-                socket = reflectionSocket
-                inputStream = reflectionSocket.inputStream
-                outputStream = reflectionSocket.outputStream
-                log("Connected successfully via Secure Channel $channel")
-                return
-            } catch (e: Exception) {
-                lastException = e
-                try {
-                    reflectionSocket?.close()
-                } catch (_: Exception) {}
                 delay(100L)
             }
         }

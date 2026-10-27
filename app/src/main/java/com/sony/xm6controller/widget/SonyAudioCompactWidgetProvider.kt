@@ -35,11 +35,16 @@ class SonyAudioCompactWidgetProvider : AppWidgetProvider() {
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
         if (intent.action == ACTION_CYCLE_MODE) {
+            val pendingResult = goAsync()
             val repository = HeadphoneRepository.getInstance(context)
             widgetScope.launch {
-                repository.cycleNoiseControlMode()
-                notifyUpdate(context)
-                SonyAudioStudioWidgetProvider.notifyUpdate(context)
+                try {
+                    repository.cycleNoiseControlMode()
+                    notifyUpdate(context)
+                    SonyAudioStudioWidgetProvider.notifyUpdate(context)
+                } finally {
+                    pendingResult.finish()
+                }
             }
         }
     }

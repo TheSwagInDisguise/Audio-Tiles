@@ -75,6 +75,12 @@ class MdrProtocolTest {
         assertEquals(MdrConstants.TYPE_COMMAND_1, packet.type)
         assertEquals(1, packet.sequence)
         assertArrayEquals(payload, packet.payload)
+
+        // Verify buffer size capping on corrupted streams without stop byte
+        val garbage = ByteArray(5000) { 0xAA.toByte() }
+        garbage[0] = MdrConstants.START_BYTE
+        val garbagePackets = decoder.feed(garbage)
+        assertEquals(0, garbagePackets.size) // Buffer reset without crashing
     }
 
     @Test
@@ -190,6 +196,19 @@ class MdrProtocolTest {
         assertEquals(1, packets.size)
         assertEquals(MdrConstants.OP_DSEE_SET, packets[0].payload[0])
         assertEquals(0x01.toByte(), packets[0].payload[2])
+
+        // Verify Speak-to-Chat state parsing
+        // Enabled payload: [0xF9, 0x0C, 0x00, 0x01, 0x01]
+        val enabledPayload = byteArrayOf(0xF9.toByte(), 0x0C, 0x00, 0x01, 0x01)
+        val enabledState = MdrResponseParser.parseSpeakToChatState(enabledPayload)
+        assertNotNull(enabledState)
+        assertTrue(enabledState!!.enabled)
+
+        // Disabled payload: [0xF9, 0x0C, 0x01, 0x01, 0x01] (onByte=0x01, sensitivity=1)
+        val disabledPayload = byteArrayOf(0xF9.toByte(), 0x0C, 0x01, 0x01, 0x01)
+        val disabledState = MdrResponseParser.parseSpeakToChatState(disabledPayload)
+        assertNotNull(disabledState)
+        assertFalse(disabledState!!.enabled) // Must be FALSE, not true due to operator precedence
     }
 
     @Test

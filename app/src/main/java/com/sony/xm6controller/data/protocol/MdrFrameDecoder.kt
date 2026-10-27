@@ -37,6 +37,11 @@ class MdrFrameDecoder {
                 else -> {
                     if (inFrame) {
                         buffer.write(b.toInt())
+                        // Prevent unbounded memory growth if stream is malformed or stop marker is lost
+                        if (buffer.size() > 4096) {
+                            inFrame = false
+                            buffer.reset()
+                        }
                     }
                 }
             }

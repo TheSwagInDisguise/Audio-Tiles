@@ -132,33 +132,60 @@ class BluetoothConnectionManager private constructor(private val context: Contex
     val diagnosticEntries: StateFlow<List<MdrDiagnosticLogEntry>> = _diagnosticEntries.asStateFlow()
 
     init {
+        // Load persisted settings
+        val prefs = context.getSharedPreferences(PREFS_SETTINGS, Context.MODE_PRIVATE)
+        val savedSchemeName = prefs.getString(KEY_TILE_CYCLE_SCHEME, null)
+        if (savedSchemeName != null) {
+            try {
+                _tileCycleScheme.value = TileCycleScheme.valueOf(savedSchemeName)
+            } catch (_: Exception) {}
+        }
+        val savedDeviceAddr = prefs.getString(KEY_PREFERRED_DEVICE_ADDR, null)
+
         // Initial target scan
-        refreshTargetDevice()
+        refreshTargetDevice(savedDeviceAddr)
         loadUserPresets()
         registerBluetoothAclReceiver()
     }
 
+    private val PREFS_SETTINGS = "sony_audio_tiles_settings"
+    private val KEY_TILE_CYCLE_SCHEME = "key_tile_cycle_scheme"
+    private val KEY_PREFERRED_DEVICE_ADDR = "key_preferred_device_addr"
+
     fun setTileCycleScheme(scheme: TileCycleScheme) {
         _tileCycleScheme.value = scheme
+        val prefs = context.getSharedPreferences(PREFS_SETTINGS, Context.MODE_PRIVATE)
+        prefs.edit().putString(KEY_TILE_CYCLE_SCHEME, scheme.name).apply()
         addLog("Tile cycle scheme changed to: ${scheme.label}")
     }
 
     @SuppressLint("MissingPermission")
     fun refreshTargetDevice(preferredAddress: String? = null) {
+        if (preferredAddress != null) {
+            val prefs = context.getSharedPreferences(PREFS_SETTINGS, Context.MODE_PRIVATE)
+            prefs.edit().putString(KEY_PREFERRED_DEVICE_ADDR, preferredAddress).apply()
+        }
         val dev = deviceScanner.findTargetDevice(preferredAddress)
+        val currentConnectedAddr = (_connectionState.value as? ConnectionState.Connected)?.address
+        if (currentConnectedAddr != null && dev != null && !currentConnectedAddr.equals(dev.address, ignoreCase = true)) {
+            addLog("Target device changed from $currentConnectedAddr to ${dev.address}. Reconnecting...")
+            scope.launch {
+                disconnect()
+            }
+        }
         _targetDevice.value = dev
         _deviceCapabilities.value = DeviceCapabilities.resolve(dev?.name)
     }
 
     private fun addLog(message: String) {
         Log.d(TAG, message)
-        val current = _diagnosticLogs.value.toMutableList()
         val timestamp = java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.US).format(java.util.Date())
-        current.add("[$timestamp] $message")
-        if (current.size > 200) {
-            current.removeAt(0)
+        _diagnosticLogs.update { current ->
+            val list = current.toMutableList()
+            list.add("[$timestamp] $message")
+            if (list.size > 200) list.removeAt(0)
+            list
         }
-        _diagnosticLogs.value = current
     }
 
     fun logDiagnostic(
@@ -179,12 +206,12 @@ class BluetoothConnectionManager private constructor(private val context: Contex
             payloadHex = payloadHex,
             note = note
         )
-        val curEntries = _diagnosticEntries.value.toMutableList()
-        curEntries.add(entry)
-        if (curEntries.size > 200) {
-            curEntries.removeAt(0)
+        _diagnosticEntries.update { current ->
+            val list = current.toMutableList()
+            list.add(entry)
+            if (list.size > 200) list.removeAt(0)
+            list
         }
-        _diagnosticEntries.value = curEntries
 
         val summary = buildString {
             append("[${direction.name}] ")
@@ -199,6 +226,14 @@ class BluetoothConnectionManager private constructor(private val context: Contex
         _diagnosticLogs.value = emptyList()
         _diagnosticEntries.value = emptyList()
         logDiagnostic(LogDirection.INFO, note = "Diagnostic logs cleared by user")
+    }
+
+    private fun maskMac(address: String): String {
+        val parts = address.split(":")
+        if (parts.size == 6) {
+            return "XX:XX:XX:XX:${parts[4]}:${parts[5]}"
+        }
+        return "XX:XX:XX:XX"
     }
 
     @SuppressLint("MissingPermission")
@@ -217,13 +252,13 @@ class BluetoothConnectionManager private constructor(private val context: Contex
             appendLine("       SONY AUDIO TILES DIAGNOSTIC DUMP REPORT     ")
             appendLine("==================================================")
             appendLine("Generated At: ${java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ", java.util.Locale.US).format(java.util.Date())}")
-            appendLine("App Version: 2.0.2 (Code 20002)")
+            appendLine("App Version: ${com.sony.xm6controller.BuildConfig.VERSION_NAME} (Code ${com.sony.xm6controller.BuildConfig.VERSION_CODE})")
             appendLine("Android OS: Android ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})")
             appendLine("Device Hardware: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL} (${android.os.Build.DEVICE})")
             appendLine()
             appendLine("--- TARGET HEADSET & HARDWARE CAPABILITIES ---")
             appendLine("Device Name: ${dev?.name ?: "None"}")
-            appendLine("Device Address: ${dev?.address ?: "N/A"}")
+            appendLine("Device Address: ${dev?.address?.let { maskMac(it) } ?: "N/A"}")
             appendLine("Resolved Model: ${caps.modelName} (${caps.family.displayName})")
             appendLine("Capabilities:")
             appendLine("  - Speak-to-Chat Hardware: ${caps.hasSpeakToChat}")
@@ -269,21 +304,36 @@ class BluetoothConnectionManager private constructor(private val context: Contex
      */
     fun toggleEqBypass() {
         val newBypass = !_isEqBypassed.value
-        _isEqBypassed.value = newBypass
         scope.launch {
-            if (newBypass) {
-                logDiagnostic(LogDirection.INFO, opcodeName = "A/B_BYPASS", note = "A/B Audition: EQ Bypassed (Flat 0dB sent to hardware DSP)")
-                commandMutex.withLock {
+            commandMutex.withLock {
+                if (socketWrapper?.isConnected != true) {
+                    val conn = connectInternal()
+                    if (conn.isFailure) {
+                        addLog("Cannot toggle EQ bypass: device not connected")
+                        return@withLock
+                    }
+                }
+                _isEqBypassed.value = newBypass
+                if (newBypass) {
+                    logDiagnostic(LogDirection.INFO, opcodeName = "A/B_BYPASS", note = "A/B Audition: EQ Bypassed (Flat 0dB sent to hardware DSP)")
                     val frame = MdrCommandBuilder.buildSetEqualizerBandsFrame(
                         seq = txSequence,
                         clearBass = 0,
                         bands = listOf(0, 0, 0, 0, 0)
                     )
-                    sendRawBytes(frame)
+                    val res = sendFrameWithAck(frame)
+                    if (res.isFailure) {
+                        _isEqBypassed.value = !newBypass
+                        addLog("Warning: EQ bypass command not acknowledged")
+                    }
+                } else {
+                    logDiagnostic(LogDirection.INFO, opcodeName = "A/B_RESTORE", note = "A/B Audition: EQ Restored to active 10-band profile")
+                    val res = applyTenBandEqInternal(_tenBandEqState.value)
+                    if (res.isFailure) {
+                        _isEqBypassed.value = !newBypass
+                        addLog("Warning: EQ restore command not acknowledged")
+                    }
                 }
-            } else {
-                logDiagnostic(LogDirection.INFO, opcodeName = "A/B_RESTORE", note = "A/B Audition: EQ Restored to active 10-band profile")
-                applyTenBandEq(_tenBandEqState.value)
             }
         }
     }
@@ -415,39 +465,67 @@ class BluetoothConnectionManager private constructor(private val context: Contex
     }
 
     /**
-     * Connects to the Sony WH-1000XM6, performs the MDR handshake, and queries initial ANC mode.
+     * Sends framed packet and waits for device ACK, preventing sequence desync.
+     */
+    private suspend fun sendFrameWithAck(frame: ByteArray, timeoutMs: Long = 2000L): Result<Unit> {
+        val waiter = CompletableDeferred<Int>()
+        pendingAckWaiter = waiter
+
+        if (!sendRawBytes(frame)) {
+            pendingAckWaiter = null
+            return Result.failure(IOException("Failed to write frame to Bluetooth socket"))
+        }
+
+        val ackReceived = withTimeoutOrNull(timeoutMs) {
+            waiter.await()
+        }
+        pendingAckWaiter = null
+
+        if (ackReceived == null) {
+            addLog("Warning: Frame timed out waiting for device ACK (seq=$txSequence)")
+            return Result.failure(IOException("Timeout waiting for headset ACK"))
+        }
+        return Result.success(Unit)
+    }
+
+    /**
+     * Connects to the Sony headphone, performs the MDR handshake, and queries initial ANC mode.
      */
     @SuppressLint("MissingPermission")
     suspend fun connect(target: BluetoothDevice? = null): Result<Unit> = commandMutex.withLock {
+        connectInternal(target)
+    }
+
+    @SuppressLint("MissingPermission")
+    private suspend fun connectInternal(target: BluetoothDevice? = null): Result<Unit> {
         val device = target ?: _targetDevice.value ?: deviceScanner.findTargetDevice()
         if (device == null) {
-            val err = "Sony WH-1000XM6 not found in paired devices."
+            val err = "Sony headphone not found in paired devices."
             _connectionState.value = ConnectionState.Error(err)
             addLog("Connect error: $err")
             return Result.failure(IllegalStateException(err))
         }
 
         _targetDevice.value = device
-        val deviceName = device.name ?: "WH-1000XM6"
+        val deviceName = device.name ?: "Sony Headphone"
         val address = device.address
 
-        if (socketWrapper?.isConnected == true && _connectionState.value is ConnectionState.Connected) {
-            addLog("Already connected to $deviceName ($address)")
-            touchActivity()
-            return Result.success(Unit)
+        val currentConnectedAddr = (_connectionState.value as? ConnectionState.Connected)?.address
+        if (socketWrapper?.isConnected == true) {
+            if (currentConnectedAddr != null && !currentConnectedAddr.equals(address, ignoreCase = true)) {
+                addLog("Switching connection from $currentConnectedAddr to $deviceName ($address)")
+                disconnectInternal()
+            } else {
+                addLog("Already connected to $deviceName ($address)")
+                touchActivity()
+                return Result.success(Unit)
+            }
+        } else {
+            disconnectInternal()
         }
-
-        disconnectInternal()
 
         _connectionState.value = ConnectionState.Connecting(deviceName, address)
         addLog("Connecting RFCOMM socket to $deviceName ($address)...")
-
-        // Terminate any background Sony Sound Connect / Songpal processes holding the socket
-        try {
-            val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
-            am?.killBackgroundProcesses("com.sony.songpal.mdr")
-            am?.killBackgroundProcesses("jp.co.sony.songpal.mdr")
-        } catch (_: Exception) {}
 
         val wrapper = BluetoothSocketWrapper(device, ::addLog)
         val connectResult = wrapper.connect(timeoutMs = 14000L)
@@ -492,6 +570,7 @@ class BluetoothConnectionManager private constructor(private val context: Contex
         val isV1 = (_noiseControlState.value.subtype == MdrConstants.SUBTYPE_NC_ASM_V1 || _noiseControlState.value.subtype == 0x01.toByte())
         if (!isV1) {
             queryBatteryInternal()
+            delay(120L)
             queryEqualizerInternal()
         } else {
             addLog("Legacy MDR V1 detected: Battery opcode 0x22 omitted for device safety.")
@@ -504,7 +583,7 @@ class BluetoothConnectionManager private constructor(private val context: Contex
 
     private suspend fun queryEqualizerInternal() {
         val frame = MdrCommandBuilder.buildGetEqualizerFrame(txSequence)
-        sendRawBytes(frame)
+        sendFrameWithAck(frame, timeoutMs = 1500L)
     }
 
     /**
@@ -565,7 +644,7 @@ class BluetoothConnectionManager private constructor(private val context: Contex
      */
     private suspend fun queryBatteryInternal() {
         val frame = MdrCommandBuilder.buildGetBatteryFrame(txSequence)
-        sendRawBytes(frame)
+        sendFrameWithAck(frame, timeoutMs = 1500L)
     }
 
     /**
@@ -573,7 +652,7 @@ class BluetoothConnectionManager private constructor(private val context: Contex
      */
     suspend fun queryBattery(): Result<Unit> = commandMutex.withLock {
         if (socketWrapper?.isConnected != true) {
-            val conn = connect()
+            val conn = connectInternal()
             if (conn.isFailure) return conn
         }
         queryBatteryInternal()
@@ -586,7 +665,7 @@ class BluetoothConnectionManager private constructor(private val context: Contex
      */
     suspend fun setMode(targetMode: NoiseControlMode): Result<NoiseControlMode> = commandMutex.withLock {
         if (socketWrapper?.isConnected != true) {
-            val conn = connect()
+            val conn = connectInternal()
             if (conn.isFailure) {
                 return Result.failure(conn.exceptionOrNull() ?: IOException("Not connected"))
             }
@@ -603,23 +682,10 @@ class BluetoothConnectionManager private constructor(private val context: Contex
             focusOnVoice = currentState.focusOnVoice
         )
 
-        val ackWaiter = CompletableDeferred<Int>()
-        pendingAckWaiter = ackWaiter
-
-        if (!sendRawBytes(frame)) {
-            pendingAckWaiter = null
-            return Result.failure(IOException("Failed to write to Bluetooth socket"))
-        }
-
-        val ackReceived = withTimeoutOrNull(2500L) {
-            ackWaiter.await()
-        }
-        pendingAckWaiter = null
-
-        if (ackReceived == null) {
-            addLog("Warning: No ACK received for mode switch to ${targetMode.label}")
-        } else {
-            addLog("ACK received (seq=$ackReceived). Mode applied.")
+        val sendRes = sendFrameWithAck(frame, timeoutMs = 2500L)
+        if (sendRes.isFailure) {
+            addLog("Warning: Mode switch to ${targetMode.label} failed or not acknowledged")
+            return Result.failure(sendRes.exceptionOrNull() ?: IOException("Mode switch not acknowledged"))
         }
 
         val updatedState = currentState.copy(mode = targetMode)
@@ -634,7 +700,7 @@ class BluetoothConnectionManager private constructor(private val context: Contex
      */
     suspend fun setAmbientLevel(level: Int): Result<Unit> = commandMutex.withLock {
         if (socketWrapper?.isConnected != true) {
-            val conn = connect()
+            val conn = connectInternal()
             if (conn.isFailure) return conn
         }
 
@@ -650,7 +716,9 @@ class BluetoothConnectionManager private constructor(private val context: Contex
             focusOnVoice = current.focusOnVoice
         )
 
-        sendRawBytes(frame)
+        val res = sendFrameWithAck(frame)
+        if (res.isFailure) return res
+
         _noiseControlState.value = current.copy(
             mode = NoiseControlMode.AMBIENT_SOUND,
             ambientLevel = clamped
@@ -664,7 +732,7 @@ class BluetoothConnectionManager private constructor(private val context: Contex
      */
     suspend fun setFocusOnVoice(enabled: Boolean): Result<Unit> = commandMutex.withLock {
         if (socketWrapper?.isConnected != true) {
-            val conn = connect()
+            val conn = connectInternal()
             if (conn.isFailure) return conn
         }
 
@@ -678,7 +746,9 @@ class BluetoothConnectionManager private constructor(private val context: Contex
             focusOnVoice = enabled
         )
 
-        sendRawBytes(frame)
+        val res = sendFrameWithAck(frame)
+        if (res.isFailure) return res
+
         _noiseControlState.value = current.copy(
             mode = NoiseControlMode.AMBIENT_SOUND,
             focusOnVoice = enabled
@@ -692,7 +762,7 @@ class BluetoothConnectionManager private constructor(private val context: Contex
      */
     suspend fun setWindNoiseReduction(enabled: Boolean): Result<Unit> = commandMutex.withLock {
         if (socketWrapper?.isConnected != true) {
-            val conn = connect()
+            val conn = connectInternal()
             if (conn.isFailure) return conn
         }
 
@@ -706,7 +776,9 @@ class BluetoothConnectionManager private constructor(private val context: Contex
             focusOnVoice = current.focusOnVoice
         )
 
-        sendRawBytes(frame)
+        val res = sendFrameWithAck(frame)
+        if (res.isFailure) return res
+
         _noiseControlState.value = current.copy(
             mode = NoiseControlMode.NOISE_CANCELLING,
             windNoiseReduction = enabled
@@ -729,12 +801,14 @@ class BluetoothConnectionManager private constructor(private val context: Contex
      */
     suspend fun setEqualizerPreset(preset: EqPreset): Result<Unit> = commandMutex.withLock {
         if (socketWrapper?.isConnected != true) {
-            val conn = connect()
+            val conn = connectInternal()
             if (conn.isFailure) return conn
         }
         addLog("Setting EQ Preset: ${preset.displayName}...")
         val frame = MdrCommandBuilder.buildSetEqualizerPresetFrame(txSequence, preset)
-        sendRawBytes(frame)
+        val res = sendFrameWithAck(frame)
+        if (res.isFailure) return res
+
         _equalizerState.value = _equalizerState.value.copy(preset = preset)
         touchActivity()
         return Result.success(Unit)
@@ -749,7 +823,7 @@ class BluetoothConnectionManager private constructor(private val context: Contex
         bands: List<Int>
     ): Result<Unit> = commandMutex.withLock {
         if (socketWrapper?.isConnected != true) {
-            val conn = connect()
+            val conn = connectInternal()
             if (conn.isFailure) return conn
         }
         addLog("Applying 5-band Equalizer (Clear Bass: $clearBass)...")
@@ -759,7 +833,9 @@ class BluetoothConnectionManager private constructor(private val context: Contex
             clearBass = clearBass,
             bands = bands
         )
-        sendRawBytes(frame)
+        val res = sendFrameWithAck(frame)
+        if (res.isFailure) return res
+
         _equalizerState.value = EqualizerState(
             preset = preset,
             clearBass = clearBass,
@@ -777,8 +853,12 @@ class BluetoothConnectionManager private constructor(private val context: Contex
      * Applies a 10-band Equalizer curve by downsampling & translating to Sony hardware DSP.
      */
     suspend fun applyTenBandEq(state: TenBandEqState): Result<Unit> = commandMutex.withLock {
+        applyTenBandEqInternal(state)
+    }
+
+    private suspend fun applyTenBandEqInternal(state: TenBandEqState): Result<Unit> {
         if (socketWrapper?.isConnected != true) {
-            val conn = connect()
+            val conn = connectInternal()
             if (conn.isFailure) return conn
         }
 
@@ -790,7 +870,9 @@ class BluetoothConnectionManager private constructor(private val context: Contex
             clearBass = hw.clearBass,
             bands = hw.bands
         )
-        sendRawBytes(frame)
+        val res = sendFrameWithAck(frame)
+        if (res.isFailure) return res
+
         _tenBandEqState.value = state
         _equalizerState.value = EqualizerState(
             preset = EqPreset.CUSTOM_1,
@@ -819,13 +901,13 @@ class BluetoothConnectionManager private constructor(private val context: Contex
      */
     suspend fun queryEqualizer(): Result<Unit> = commandMutex.withLock {
         if (socketWrapper?.isConnected != true) {
-            val conn = connect()
+            val conn = connectInternal()
             if (conn.isFailure) return conn
         }
         val frame = MdrCommandBuilder.buildGetEqualizerFrame(txSequence)
-        sendRawBytes(frame)
+        val res = sendFrameWithAck(frame)
         touchActivity()
-        return Result.success(Unit)
+        return res
     }
 
     /**
@@ -837,12 +919,14 @@ class BluetoothConnectionManager private constructor(private val context: Contex
         timeout: Int = 1
     ): Result<Unit> = commandMutex.withLock {
         if (socketWrapper?.isConnected != true) {
-            val conn = connect()
+            val conn = connectInternal()
             if (conn.isFailure) return conn
         }
         addLog("Setting Speak-to-Chat: $enabled (sens=$sensitivity, timeout=$timeout)...")
         val frame = MdrCommandBuilder.buildSetSpeakToChatFrame(txSequence, enabled, sensitivity, timeout)
-        sendRawBytes(frame)
+        val res = sendFrameWithAck(frame)
+        if (res.isFailure) return res
+
         _soundFeaturesState.value = _soundFeaturesState.value.copy(
             speakToChat = SpeakToChatState(enabled = enabled, sensitivity = sensitivity, timeout = timeout)
         )
@@ -855,12 +939,14 @@ class BluetoothConnectionManager private constructor(private val context: Contex
      */
     suspend fun setDsee(enabled: Boolean): Result<Unit> = commandMutex.withLock {
         if (socketWrapper?.isConnected != true) {
-            val conn = connect()
+            val conn = connectInternal()
             if (conn.isFailure) return conn
         }
         addLog("Setting DSEE Extreme: $enabled...")
         val frame = MdrCommandBuilder.buildSetDseeFrame(txSequence, enabled)
-        sendRawBytes(frame)
+        val res = sendFrameWithAck(frame)
+        if (res.isFailure) return res
+
         _soundFeaturesState.value = _soundFeaturesState.value.copy(dseeExtreme = enabled)
         touchActivity()
         return Result.success(Unit)
@@ -871,12 +957,14 @@ class BluetoothConnectionManager private constructor(private val context: Contex
      */
     suspend fun setWearingPause(enabled: Boolean): Result<Unit> = commandMutex.withLock {
         if (socketWrapper?.isConnected != true) {
-            val conn = connect()
+            val conn = connectInternal()
             if (conn.isFailure) return conn
         }
         addLog("Setting Pause on Removal: $enabled...")
         val frame = MdrCommandBuilder.buildSetWearingPauseFrame(txSequence, enabled)
-        sendRawBytes(frame)
+        val res = sendFrameWithAck(frame)
+        if (res.isFailure) return res
+
         _soundFeaturesState.value = _soundFeaturesState.value.copy(wearingPause = enabled)
         touchActivity()
         return Result.success(Unit)
@@ -887,12 +975,14 @@ class BluetoothConnectionManager private constructor(private val context: Contex
      */
     suspend fun setAutoPowerOff(timerIndex: Int): Result<Unit> = commandMutex.withLock {
         if (socketWrapper?.isConnected != true) {
-            val conn = connect()
+            val conn = connectInternal()
             if (conn.isFailure) return conn
         }
         addLog("Setting Auto Power-Off timer index: $timerIndex...")
         val frame = MdrCommandBuilder.buildSetAutoPowerOffFrame(txSequence, timerIndex)
-        sendRawBytes(frame)
+        val res = sendFrameWithAck(frame)
+        if (res.isFailure) return res
+
         _soundFeaturesState.value = _soundFeaturesState.value.copy(autoPowerOffIndex = timerIndex)
         touchActivity()
         return Result.success(Unit)
@@ -903,12 +993,14 @@ class BluetoothConnectionManager private constructor(private val context: Contex
      */
     suspend fun setTouchSensor(enabled: Boolean): Result<Unit> = commandMutex.withLock {
         if (socketWrapper?.isConnected != true) {
-            val conn = connect()
+            val conn = connectInternal()
             if (conn.isFailure) return conn
         }
         addLog("Setting Touch Sensor Panel: $enabled...")
         val frame = MdrCommandBuilder.buildSetTouchSensorFrame(txSequence, enabled)
-        sendRawBytes(frame)
+        val res = sendFrameWithAck(frame)
+        if (res.isFailure) return res
+
         _soundFeaturesState.value = _soundFeaturesState.value.copy(touchSensorEnabled = enabled)
         touchActivity()
         return Result.success(Unit)
@@ -919,15 +1011,18 @@ class BluetoothConnectionManager private constructor(private val context: Contex
      */
     suspend fun setSoundQualityPriority(qualityPriority: Boolean): Result<Unit> = commandMutex.withLock {
         if (socketWrapper?.isConnected != true) {
-            val conn = connect()
+            val conn = connectInternal()
             if (conn.isFailure) return conn
         }
         addLog("Setting Sound Quality Mode: ${if (qualityPriority) "Priority on Sound Quality" else "Priority on Stable Connection"}...")
         val frame = MdrCommandBuilder.buildSetSoundQualityPriorityFrame(txSequence, qualityPriority)
-        sendRawBytes(frame)
+        val res = sendFrameWithAck(frame)
+        if (res.isFailure) return res
+
         _soundFeaturesState.value = _soundFeaturesState.value.copy(soundQualityPriority = qualityPriority)
         touchActivity()
         return Result.success(Unit)
+    }
     }
 
     /**

@@ -54,6 +54,16 @@ class XM6ForegroundService : Service() {
                 }
             }
             else -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    val hasBtPermission = androidx.core.content.ContextCompat.checkSelfPermission(
+                        this,
+                        android.Manifest.permission.BLUETOOTH_CONNECT
+                    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                    if (!hasBtPermission) {
+                        stopSelf()
+                        return START_NOT_STICKY
+                    }
+                }
                 startForegroundWithNotification()
                 startStateMonitoring()
             }

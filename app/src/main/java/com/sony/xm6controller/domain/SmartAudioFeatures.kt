@@ -123,6 +123,7 @@ class DynamicBassManager(
     init {
         val prefs = context.getSharedPreferences("smart_audio_prefs", Context.MODE_PRIVATE)
         _isEnabled.value = prefs.getBoolean("iso226_enabled", false)
+        baseClearBass = prefs.getInt("base_clear_bass", 0)
         if (_isEnabled.value) {
             startObserving()
         }
@@ -130,13 +131,12 @@ class DynamicBassManager(
 
     fun setEnabled(enabled: Boolean) {
         _isEnabled.value = enabled
-        context.getSharedPreferences("smart_audio_prefs", Context.MODE_PRIVATE)
-            .edit()
-            .putBoolean("iso226_enabled", enabled)
-            .apply()
+        val prefs = context.getSharedPreferences("smart_audio_prefs", Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("iso226_enabled", enabled).apply()
 
         if (enabled) {
             baseClearBass = repository.equalizerState.value.clearBass
+            prefs.edit().putInt("base_clear_bass", baseClearBass).apply()
             startObserving()
             recalculateAndApply()
         } else {

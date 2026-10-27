@@ -171,6 +171,7 @@ object MdrResponseParser {
 
     /**
      * Parses Speak-to-Chat status packets (0xF7 RET or 0xF9 NOTIFY).
+     * Wire layout: [0xF7/0xF9, subtype, onByte (0x00=Enabled, 0x01=Disabled), sensitivity, timeout]
      */
     fun parseSpeakToChatState(payload: ByteArray): SpeakToChatState? {
         if (payload.size < 3) return null
@@ -179,7 +180,7 @@ object MdrResponseParser {
             return null
         }
         val onByte = payload[2].toInt() and 0xFF
-        val isEnabled = (onByte == 0x00 || onByte == 0x01 && payload.size > 3 && payload[3].toInt() == 0x01)
+        val isEnabled = (onByte == 0x00)
         val sensitivity = if (payload.size > 3) payload[3].toInt() and 0xFF else 1
         val timeout = if (payload.size > 4) payload[4].toInt() and 0xFF else 1
 

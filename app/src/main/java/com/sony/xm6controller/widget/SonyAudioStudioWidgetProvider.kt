@@ -40,17 +40,27 @@ class SonyAudioStudioWidgetProvider : AppWidgetProvider() {
             ACTION_SET_MODE -> {
                 val modeOrdinal = intent.getIntExtra(EXTRA_MODE_ORDINAL, 0)
                 val targetMode = NoiseControlMode.entries.getOrElse(modeOrdinal) { NoiseControlMode.NOISE_CANCELLING }
+                val pendingResult = goAsync()
                 widgetScope.launch {
-                    repository.setNoiseControlMode(targetMode)
-                    notifyUpdate(context)
-                    SonyAudioCompactWidgetProvider.notifyUpdate(context)
+                    try {
+                        repository.setNoiseControlMode(targetMode)
+                        notifyUpdate(context)
+                        SonyAudioCompactWidgetProvider.notifyUpdate(context)
+                    } finally {
+                        pendingResult.finish()
+                    }
                 }
             }
             ACTION_TOGGLE_S2C -> {
+                val pendingResult = goAsync()
                 widgetScope.launch {
-                    val cur = repository.soundFeaturesState.value.speakToChat.enabled
-                    repository.setSpeakToChat(!cur)
-                    notifyUpdate(context)
+                    try {
+                        val cur = repository.soundFeaturesState.value.speakToChat.enabled
+                        repository.setSpeakToChat(!cur)
+                        notifyUpdate(context)
+                    } finally {
+                        pendingResult.finish()
+                    }
                 }
             }
             ACTION_TOGGLE_BYPASS -> {
