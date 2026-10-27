@@ -3239,7 +3239,7 @@ fun SettingsDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("Sony Audio Tiles", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    Text("v2.0.2 (Build 20002)", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                    Text("v${com.sony.xm6controller.BuildConfig.VERSION_NAME} (Build ${com.sony.xm6controller.BuildConfig.VERSION_CODE})", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
                 }
             }
         },
